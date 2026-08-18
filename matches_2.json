@@ -1,0 +1,27 @@
+[
+  {
+    "matchDate": "01/08/2026",
+    "opponent": "VC山梨",
+    "dataFile": "2026-08-01_VC山梨.json"
+  },
+  {
+    "matchDate": "01/08/2026",
+    "opponent": "東京大学",
+    "dataFile": "2026-08-01_東京大学.json"
+  },
+  {
+    "matchDate": "26/07/2026",
+    "opponent": "MOFA",
+    "dataFile": "2026-07-26_MOFA.json"
+  },
+  {
+    "matchDate": "26/07/2026",
+    "opponent": "暁クラブ",
+    "dataFile": "2026-07-26_暁クラブ.json"
+  },
+  {
+    "matchDate": "26/07/2026",
+    "opponent": "出光クラブ",
+    "dataFile": "2026-07-26_出光クラブ.json"
+  }
+]
