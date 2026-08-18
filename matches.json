@@ -1,5 +1,10 @@
 [
   {
+    "matchDate": "02/08/2026",
+    "opponent": "新潟国体",
+    "dataFile": "2026-08-02_新潟国体.json"
+  },
+  {
     "matchDate": "01/08/2026",
     "opponent": "VC山梨",
     "dataFile": "2026-08-01_VC山梨.json"
