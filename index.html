@@ -369,6 +369,23 @@
       <div id="scoringPatternBody"></div>
     </div>
 
+    <div class="card" id="opponentAnalysisCard" style="display:none">
+      <h3 class="section-label" id="opponentAnalysisTitle" style="margin-top:0">相手チーム分析</h3>
+      <p class="hint" style="margin-top:-6px">
+        同じ試合データの中に相手チームのプレーも記録されているので、次にこのチームと対戦するときの参考用にまとめています。
+        相手選手はスカウト時の背番号（#1〜）でのみ表示しています（名簿欄に相手の名前が入力されていないため）。
+        1試合を選んでいるときだけ表示されます。
+      </p>
+      <h4 class="section-label" style="font-size:15px">選手ランキング（相手チーム）</h4>
+      <div id="opponentLeaderboardBody"></div>
+      <h4 class="section-label" style="font-size:15px">ローテーション別 サイドアウト率・ブレイク率（相手チーム）</h4>
+      <p class="hint" style="margin-top:-6px">
+        相手のサイドアウト率が低いローテはこちらのサーブが効いている合図、相手のブレイク率が高いローテは相手のサーブが効いている合図です。
+      </p>
+      <div id="opponentSideOutBreakByRotationBody"></div>
+      <p class="hint" id="opponentRotationInsightLine" style="margin-top:12px"></p>
+    </div>
+
     <div class="card" id="scoreProgressionCard">
       <h3 class="section-label" style="margin-top:0">セット経過（得点推移）</h3>
       <p class="hint" style="margin-top:-6px">
@@ -2256,6 +2273,19 @@ function showSingleMatch(data, entries, dataList) {
   }
   const bySetForPattern = combined ? dataList.flatMap(d => d.scoreProgression.bySet) : DATA.scoreProgression.bySet;
   document.getElementById('scoringPatternBody').innerHTML = scoringPatternHtml(computeScoringPattern(bySetForPattern));
+  // 2026-08-22: 相手チーム分析カードは、こうせいさんの希望で当面は非表示にする
+  // （いったん白紙に戻す）。データ自体(DATA.opponentStats)はJSONに引き続き入っているので、
+  // また表示したくなったら下のifを `!combined && DATA.opponentStats` に戻すだけでよい。
+  if (false) {
+    document.getElementById('opponentAnalysisCard').style.display = 'block';
+    document.getElementById('opponentAnalysisTitle').textContent = `相手チーム分析（${DATA.opponent}）`;
+    document.getElementById('opponentLeaderboardBody').innerHTML = playerLeaderboardHtml(DATA.opponentStats.total || []);
+    const oppRows = (DATA.opponentStats.sideOutBreak && DATA.opponentStats.sideOutBreak.byRotation) || [];
+    document.getElementById('opponentSideOutBreakByRotationBody').innerHTML = sideOutBreakByRotationHtml(oppRows);
+    document.getElementById('opponentRotationInsightLine').textContent = rotationInsightText(oppRows);
+  } else {
+    document.getElementById('opponentAnalysisCard').style.display = 'none';
+  }
   showScoreProgressionCharts();
   showPage(1);
   renderSingleMatchPlayerView();

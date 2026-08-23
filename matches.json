@@ -1,5 +1,35 @@
 [
   {
+    "matchDate": "09/08/2026",
+    "opponent": "埼玉アザレア",
+    "dataFile": "2026-08-09_埼玉アザレア.json"
+  },
+  {
+    "matchDate": "09/08/2026",
+    "opponent": "大東文化大学",
+    "dataFile": "2026-08-09_大東文化大学.json"
+  },
+  {
+    "matchDate": "09/08/2026",
+    "opponent": "中央学院大学",
+    "dataFile": "2026-08-09_中央学院大学.json"
+  },
+  {
+    "matchDate": "09/08/2026",
+    "opponent": "東京ヴェルディ",
+    "dataFile": "2026-08-09_東京ヴェルディ.json"
+  },
+  {
+    "matchDate": "09/08/2026",
+    "opponent": "日本大学",
+    "dataFile": "2026-08-09_日本大学.json"
+  },
+  {
+    "matchDate": "09/08/2026",
+    "opponent": "TM東京",
+    "dataFile": "2026-08-09_TM東京.json"
+  },
+  {
     "matchDate": "02/08/2026",
     "opponent": "新潟国体",
     "dataFile": "2026-08-02_新潟国体.json"
