@@ -395,6 +395,7 @@
       <div class="player-grid" id="scoreProgressionSetButtons"></div>
       <div id="scoreProgressionChartArea" style="margin-top:16px"></div>
       <h3 class="section-label" id="runHighlightsLabel">セットごとの流れハイライト</h3>
+      <div class="player-grid" id="runHighlightsSetButtons" style="margin-bottom:12px"></div>
       <div id="runHighlightsBody"></div>
     </div>
 
@@ -1789,7 +1790,34 @@ function showScoreProgressionCharts() {
   } else {
     chartEl.innerHTML = '';
   }
+  showRunHighlights();
+}
+
+function showRunHighlights() {
+  document.getElementById('runHighlightsSetButtons').innerHTML = '';
   document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml({ bySet: DATA.scoreProgression.bySet });
+}
+
+// 試合を2つ以上選んでいるとき用：試合ごとのボタン＋「全体」ボタンを出し、
+// 試合を選ぶとその試合だけ、「全体」を選ぶと選んだ試合すべての合計を表示する。
+function showRunHighlightsCombined(entries, dataList, combinedBySet) {
+  const btnEl = document.getElementById('runHighlightsSetButtons');
+  btnEl.innerHTML = '';
+  const items = dataList.map(d => ({ label: d.opponent, bySet: d.scoreProgression.bySet }));
+  items.push({ label: '全体', bySet: combinedBySet });
+  items.forEach((item, idx) => {
+    const chip = document.createElement('button');
+    chip.className = 'player-chip';
+    chip.textContent = item.label;
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#runHighlightsSetButtons .player-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml({ bySet: item.bySet });
+    });
+    if (idx === items.length - 1) chip.classList.add('selected');
+    btnEl.appendChild(chip);
+  });
+  document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml({ bySet: items[items.length - 1].bySet });
 }
 
 // 複数試合選択時：全選んだ試合のセットをまとめてボタンに出し、どれでもグラフを見られるようにする。
@@ -1812,7 +1840,7 @@ function showScoreProgressionChartsCombined(entries, dataList) {
   } else {
     chartEl.innerHTML = '';
   }
-  document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml({ bySet: combinedBySet });
+  showRunHighlightsCombined(entries, dataList, combinedBySet);
 }
 
 // ==================== セットごとの流れハイライト（連続得点・点差） ====================
