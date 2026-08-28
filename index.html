@@ -1763,8 +1763,11 @@ function showStartingLineups(bySet) {
 function selectScoreProgressionSet(s, chipEl) {
   document.querySelectorAll('#scoreProgressionSetButtons .player-chip').forEach(c => c.classList.remove('selected'));
   chipEl.classList.add('selected');
+  const teamLabel = s.matchTeamLabel || DATA.teamLabel;
+  const opponent = s.matchOpponent || DATA.opponent;
+  const title = s.matchOpponent ? `${s.matchOpponent} 第${s.setNumber}セット` : `第${s.setNumber}セット`;
   document.getElementById('scoreProgressionChartArea').innerHTML =
-    scoreChartSvg(s.points, `第${s.setNumber}セット`, DATA.teamLabel, DATA.opponent);
+    scoreChartSvg(s.points, title, teamLabel, opponent);
 }
 
 function showScoreProgressionCharts() {
@@ -1785,7 +1788,30 @@ function showScoreProgressionCharts() {
   } else {
     chartEl.innerHTML = '';
   }
-  document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml(DATA.scoreProgression);
+  document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml({ bySet: DATA.scoreProgression.bySet });
+}
+
+// 複数試合選択時：全選んだ試合のセットをまとめてボタンに出し、どれでもグラフを見られるようにする。
+function showScoreProgressionChartsCombined(entries, dataList) {
+  const btnEl = document.getElementById('scoreProgressionSetButtons');
+  const chartEl = document.getElementById('scoreProgressionChartArea');
+  btnEl.innerHTML = '';
+  const combinedBySet = buildCombinedBySet(dataList);
+  combinedBySet.forEach((s, idx) => {
+    const chip = document.createElement('button');
+    chip.className = 'player-chip';
+    chip.textContent = `${s.matchOpponent} 第${s.setNumber}セット`;
+    chip.addEventListener('click', () => selectScoreProgressionSet(s, chip));
+    if (idx === 0) chip.classList.add('selected');
+    btnEl.appendChild(chip);
+  });
+  if (combinedBySet.length) {
+    const first = combinedBySet[0];
+    chartEl.innerHTML = scoreChartSvg(first.points, `${first.matchOpponent} 第${first.setNumber}セット`, first.matchTeamLabel, first.matchOpponent);
+  } else {
+    chartEl.innerHTML = '';
+  }
+  document.getElementById('runHighlightsBody').innerHTML = runHighlightsHtml({ bySet: combinedBySet });
 }
 
 // ==================== セットごとの流れハイライト（連続得点・点差） ====================
@@ -1818,6 +1844,7 @@ function computeRunHighlights(scoreProgression) {
     const finalOpp = pts.length ? pts[pts.length - 1].opponent : 0;
     return {
       setNumber: s.setNumber,
+      setLabel: s.matchOpponent ? `${s.matchOpponent} 第${s.setNumber}セット` : `第${s.setNumber}セット`,
       finalOwn, finalOpp,
       margin: Math.abs(finalOwn - finalOpp),
       won: finalOwn > finalOpp,
@@ -1825,11 +1852,11 @@ function computeRunHighlights(scoreProgression) {
       bestOwnRunPlayers, bestOppRunPlayers,
     };
   });
-  let overallBestOwn = { setNumber: null, run: 0, players: [] };
-  let overallBestOpp = { setNumber: null, run: 0, players: [] };
+  let overallBestOwn = { setLabel: null, run: 0, players: [] };
+  let overallBestOpp = { setLabel: null, run: 0, players: [] };
   perSet.forEach(s => {
-    if (s.bestOwnRun > overallBestOwn.run) overallBestOwn = { setNumber: s.setNumber, run: s.bestOwnRun, players: s.bestOwnRunPlayers };
-    if (s.bestOppRun > overallBestOpp.run) overallBestOpp = { setNumber: s.setNumber, run: s.bestOppRun, players: s.bestOppRunPlayers };
+    if (s.bestOwnRun > overallBestOwn.run) overallBestOwn = { setLabel: s.setLabel, run: s.bestOwnRun, players: s.bestOwnRunPlayers };
+    if (s.bestOppRun > overallBestOpp.run) overallBestOpp = { setLabel: s.setLabel, run: s.bestOppRun, players: s.bestOppRunPlayers };
   });
   return { perSet, overallBestOwn, overallBestOpp };
 }
@@ -1867,7 +1894,7 @@ function runHighlightsHtml(scoreProgression) {
   perSet.forEach(s => {
     const ownP = formatRunPlayers(s.bestOwnRunPlayers);
     const oppP = formatRunPlayers(s.bestOppRunPlayers);
-    html += `<tr><td>第${s.setNumber}セット</td>`
+    html += `<tr><td>${s.setLabel}</td>`
       + `<td>${s.finalOwn} - ${s.finalOpp}</td>`
       + `<td>${s.margin}点差</td>`
       + `<td>${s.won ? '○' : '×'}</td>`
@@ -2305,9 +2332,10 @@ function renderMatchSelection() {
 function showSingleMatch(data, entries, dataList) {
   DATA = data;
   document.getElementById('mainArea').style.display = 'block';
-  document.getElementById('matchTitle').textContent =
-    `${DATA.teamLabel} 対 ${DATA.opponent}（${formatMatchDate(DATA.matchDate)}）`;
   const combined = entries && dataList && entries.length >= 2;
+  document.getElementById('matchTitle').textContent = combined
+    ? `${DATA.teamLabel}（選んだ${entries.length}試合の合計）`
+    : `${DATA.teamLabel} 対 ${DATA.opponent}（${formatMatchDate(DATA.matchDate)}）`;
   if (combined) {
     showRotationTablesCombined(entries, dataList);
     showSideOutBreakTableCombined(entries, dataList);
@@ -2330,7 +2358,11 @@ function showSingleMatch(data, entries, dataList) {
   } else {
     document.getElementById('opponentAnalysisCard').style.display = 'none';
   }
-  showScoreProgressionCharts();
+  if (combined) {
+    showScoreProgressionChartsCombined(entries, dataList);
+  } else {
+    showScoreProgressionCharts();
+  }
   showPage(1);
   renderSingleMatchPlayerView();
   if (combined) {
@@ -2757,6 +2789,16 @@ function combinedPlayerTotalsList(dataList) {
     list.push({ ...combined, number, name: ROSTER[number] || `#${number}` });
   });
   return list;
+}
+
+// 複数試合を選んでいるとき用：各試合のセットに、その試合の相手名／チーム表記を
+// タグ付けして1本のリストにまとめる（セット経過グラフ・流れハイライトで使う）。
+function buildCombinedBySet(dataList) {
+  return dataList.flatMap(d => (d.scoreProgression.bySet || []).map(s => ({
+    ...s,
+    matchOpponent: d.opponent,
+    matchTeamLabel: d.teamLabel,
+  })));
 }
 
 function combinedTableHtml(stats) {
