@@ -404,6 +404,13 @@
         攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。セットを選んでください。
       </p>
       <div class="player-grid" id="rotationSetButtons"></div>
+      <h4 class="section-label" id="tossDistributionLabel" style="font-size:15px">トス配分（％）</h4>
+      <p class="hint" style="margin-top:-6px">
+        選んだセット（または全セット合計）の中で、レフト／ライト／ミドル／パイプ／その他それぞれに
+        何％のトスが上がったかです（本数は攻撃コンビの分類による集計本数）。
+        「その他」は主にツー（セッターが2本目で自ら打ったプレー）で、まれにコンビの分類が読み取れなかったものも含みます。
+      </p>
+      <div id="tossDistributionBody"></div>
       <div id="rotationTables" style="margin-top:16px"></div>
     </div>
   </div>
@@ -440,7 +447,7 @@ function dvEmptyPlayerStats() {
     back_attempts: 0, back_points: 0, back_errors: 0,
     block_attempts: 0, block_points: 0, block_errors: 0,
     block_touch_own: 0, block_touch_opp: 0,
-    serve_attempts: 0, serve_aces: 0, serve_errors: 0,
+    serve_attempts: 0, serve_aces: 0, serve_errors: 0, serve_effective: 0,
     receive_attempts: 0, receive_a: 0, receive_b: 0,
     receive_c: 0, receive_d: 0, receive_errors: 0,
   };
@@ -542,11 +549,12 @@ function dvSplitIntoSets(lines) {
 
 function dvAnalyzeSet(linesInSet, ownMarker, backAttackCombos) {
   const stats = {};
+  const opponentMarker = ownMarker === '*' ? 'a' : '*';
   function getPlayerStats(number) {
     if (!(number in stats)) stats[number] = dvEmptyPlayerStats();
     return stats[number];
   }
-  linesInSet.forEach(line => {
+  linesInSet.forEach((line, i) => {
     const fields = line.split(';');
     const code = fields[0];
     const m = DV_ACTION_RE.exec(code);
@@ -576,9 +584,22 @@ function dvAnalyzeSet(linesInSet, ownMarker, backAttackCombos) {
       else if (evaluation === '!') p.block_touch_opp += 1;
       else if (evaluation === '+') p.block_touch_own += 1;
     } else if (skill === 'S') {
+      // 効果率には、エース('#')・ミス('=')に加えて以下も+0.5点分の効果としてカウントする：
+      //   ・サーブ自体の評価が'/'（相手が大きく崩れたDパスになった）
+      //   ・直後に記録される相手のレシーブ評価が'-'（Cパス、返球はできたが崩れた）
       p.serve_attempts += 1;
       if (evaluation === '#') p.serve_aces += 1;
       else if (evaluation === '=') p.serve_errors += 1;
+      else if (evaluation === '/') p.serve_effective += 1;
+      else {
+        const nextLine = i + 1 < linesInSet.length ? linesInSet[i + 1] : null;
+        if (nextLine) {
+          const nm = DV_ACTION_RE.exec(nextLine.split(';')[0]);
+          if (nm && nm[1] === opponentMarker && nm[3] === 'R' && nm[5] === '-') {
+            p.serve_effective += 1;
+          }
+        }
+      }
     } else if (skill === 'R') {
       p.receive_attempts += 1;
       if (evaluation === '#') p.receive_a += 1;
@@ -986,9 +1007,10 @@ function dvPlayerSummary(number, s, roster, name) {
     block_attempts: s.block_attempts, block_points: s.block_points, block_errors: s.block_errors,
     block_touch_own: s.block_touch_own, block_touch_opp: s.block_touch_opp,
     serve_attempts: s.serve_attempts, serve_aces: s.serve_aces, serve_errors: s.serve_errors,
+    serve_effective: s.serve_effective,
     serve_ace_rate: dvRate(s.serve_aces, s.serve_attempts),
     serve_error_rate: dvRate(s.serve_errors, s.serve_attempts),
-    serve_efficiency: dvRate(s.serve_aces - s.serve_errors, s.serve_attempts),
+    serve_efficiency: dvRate(s.serve_aces + s.serve_effective * 0.5 - s.serve_errors, s.serve_attempts),
     receive_attempts: s.receive_attempts, receive_a: s.receive_a, receive_b: s.receive_b,
     receive_c: s.receive_c, receive_d: s.receive_d, receive_errors: s.receive_errors,
     receive_return_rate: dvRate(s.receive_attempts - s.receive_errors, s.receive_attempts),
@@ -1590,6 +1612,23 @@ function showComparison(nums) {
   document.getElementById('comparisonBody').innerHTML = comparisonTableHtml(players);
 }
 
+function tossDistributionHtml(rows) {
+  // rows の末尾（rotation_summaryが必ず付け加える「合計」行）から、
+  // 攻撃タイプ（レフト／ライト／ミドル／パイプ／その他）ごとのトス配分％を出す
+  const grand = rows && rows.length ? rows[rows.length - 1] : null;
+  if (!grand || !grand.attempts) return '<p class="hint">データがありません。</p>';
+  let html = '<div class="stat-tiles" style="margin-bottom:14px">';
+  CATEGORY_ORDER.forEach(cat => {
+    const c = grand.categories[cat];
+    const share = dvRate(c.attempts, grand.attempts);
+    html += `<div class="stat-tile"><div class="k">${CATEGORY_LABELS[cat]}</div>`
+      + `<div class="v">${pct(share)}</div>`
+      + `<div class="hint" style="margin-top:2px">${c.attempts}本</div></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
 function rotationTableHtml(rows) {
   let html = '<div style="overflow-x:auto"><table class="rotation-table" style="min-width:920px">';
   html += '<thead><tr><th>ローテ</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th>';
@@ -1840,6 +1879,7 @@ function runHighlightsHtml(scoreProgression) {
 function selectRotationSet(rows, chipEl) {
   document.querySelectorAll('#rotationSetButtons .player-chip').forEach(c => c.classList.remove('selected'));
   chipEl.classList.add('selected');
+  document.getElementById('tossDistributionBody').innerHTML = tossDistributionHtml(rows);
   document.getElementById('rotationTables').innerHTML = rotationTableHtml(rows);
 }
 
@@ -1860,6 +1900,7 @@ function showRotationTables() {
     btnEl.appendChild(chip);
   });
   const last = items[items.length - 1];
+  document.getElementById('tossDistributionBody').innerHTML = tossDistributionHtml(last.rows);
   document.getElementById('rotationTables').innerHTML = rotationTableHtml(last.rows);
 }
 
@@ -1871,6 +1912,7 @@ function showRotationTablesCombined(entries, dataList) {
     'セット開始時のローテーションをS1とし、自チームが1回転するたびにS2→S3…と数えています。攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。選んだ試合すべての合計を表示しています。';
   document.getElementById('rotationSetButtons').innerHTML = '';
   const combinedRows = combineRotationRows(dataList.map(d => d.rotation.total.rows));
+  document.getElementById('tossDistributionBody').innerHTML = tossDistributionHtml(combinedRows);
   document.getElementById('rotationTables').innerHTML = rotationTableHtml(combinedRows);
 }
 
@@ -2577,7 +2619,7 @@ function combineStatsList(statsList) {
   const sum = {
     attempts: 0, points: 0, errors: 0, blocked: 0,
     block_attempts: 0, block_points: 0, block_errors: 0, block_touch_own: 0, block_touch_opp: 0,
-    serve_attempts: 0, serve_aces: 0, serve_errors: 0,
+    serve_attempts: 0, serve_aces: 0, serve_errors: 0, serve_effective: 0,
     receive_attempts: 0, receive_a: 0, receive_b: 0, receive_c: 0, receive_d: 0, receive_errors: 0,
   };
   valid.forEach(s => {
@@ -2589,7 +2631,7 @@ function combineStatsList(statsList) {
     efficiency: dvRate(sum.points - sum.errors - sum.blocked, sum.attempts),
     serve_ace_rate: dvRate(sum.serve_aces, sum.serve_attempts),
     serve_error_rate: dvRate(sum.serve_errors, sum.serve_attempts),
-    serve_efficiency: dvRate(sum.serve_aces - sum.serve_errors, sum.serve_attempts),
+    serve_efficiency: dvRate(sum.serve_aces + sum.serve_effective * 0.5 - sum.serve_errors, sum.serve_attempts),
     receive_return_rate: dvRate(sum.receive_attempts - sum.receive_errors, sum.receive_attempts),
     receive_a_rate: dvRate(sum.receive_a, sum.receive_attempts),
   };
