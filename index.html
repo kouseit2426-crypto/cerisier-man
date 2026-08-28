@@ -1091,10 +1091,12 @@ function dvBuildDashboardData(content, opponentName, ownTeamCode, teamLabel, ros
     },
     // ブラウザに直接ドラッグ&ドロップした試合には、まだ動画URL・時刻合わせ情報が
     // ないので空にしておく（Python側で処理した試合には入ることがある）。
+    // urlが空だと動画クリップ機能はどのみち何も使わないので、plays（全プレーの
+    // タイムスタンプ一覧）もここでは作らない（セット数が多い試合ほど無駄に重くなるため）。
     video: {
       url: '',
       offsetSeconds: null,
-      plays: allPlayLogs.flatMap((setPlays, i) => setPlays.map(p => ({ setNumber: i + 1, ...p }))),
+      plays: [],
     },
   };
 }
@@ -2353,20 +2355,28 @@ function playerLeaderboardHtml(players) {
       .sort((a, b) => b[key] - a[key])
       .slice(0, 5);
   }
-  function rowsHtml(list, key) {
+  // 値（％）だけだと、母数（打数など）が選手によって全然違うのが分からない
+  // （例：3本中3本の100%と、20本中20本の100%が同じに見えてしまう）ので、
+  // 「本数」列に "分子/分母" を添えて、その％が何本中の結果かを分かるようにする。
+  function rowsHtml(list, key, numKey, denomKey) {
     if (!list.length) return '<p class="hint">規定本数（' + MIN_ATTEMPTS + '本）以上の選手がいません。</p>';
-    return '<table class="rotation-table"><thead><tr><th>順位</th><th>選手</th><th>値</th></tr></thead><tbody>'
-      + list.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(p.name)}</td><td>${pct(p[key])}</td></tr>`).join('')
+    return '<table class="rotation-table"><thead><tr><th>順位</th><th>選手</th><th>値</th><th>本数</th></tr></thead><tbody>'
+      + list.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(p.name)}</td><td>${pct(p[key])}</td>`
+        + `<td>${p[numKey]}/${p[denomKey]}</td></tr>`).join('')
       + '</tbody></table>';
   }
   const byKill = topList(players, 'kill_rate', 'attempts');
   const byServe = topList(players, 'serve_efficiency', 'serve_attempts');
   const byReceive = topList(players, 'receive_a_rate', 'receive_attempts');
+  // サーブ効果率は「エース＋効果あり(0.5点分)－ミス」の加重計算なので、％にそのまま
+  // 対応する分子はない。ここでは「エース＋効果あり本数」を分子として、
+  // 何本中でその％になったかの目安にしている。
+  byServe.forEach(p => { p.serve_good_count = (p.serve_aces || 0) + (p.serve_effective || 0); });
 
   return '<div class="rank-grid">'
-    + `<div><h4>アタック決定率</h4>${rowsHtml(byKill, 'kill_rate')}</div>`
-    + `<div><h4>サーブ効果率</h4>${rowsHtml(byServe, 'serve_efficiency')}</div>`
-    + `<div><h4>レシーブA率</h4>${rowsHtml(byReceive, 'receive_a_rate')}</div>`
+    + `<div><h4>アタック決定率</h4>${rowsHtml(byKill, 'kill_rate', 'points', 'attempts')}</div>`
+    + `<div><h4>サーブ効果率</h4>${rowsHtml(byServe, 'serve_efficiency', 'serve_good_count', 'serve_attempts')}</div>`
+    + `<div><h4>レシーブA率</h4>${rowsHtml(byReceive, 'receive_a_rate', 'receive_a', 'receive_attempts')}</div>`
     + '</div>';
 }
 
