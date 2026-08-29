@@ -84,6 +84,18 @@
   }
   .player-check-item:hover { background: var(--grid); }
   .player-check-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--series-blue); cursor: pointer; }
+  .match-month-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 6px 4px; margin-top: 6px;
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+  }
+  .match-month-header:first-child { margin-top: 0; }
+  .month-select-btn {
+    font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--page-plane); color: var(--text-primary);
+  }
+  .month-select-btn:hover { background: var(--grid); }
 
   .card {
     background: var(--surface-1);
@@ -2351,10 +2363,52 @@ function updateMatchListToggleLabel() {
   document.getElementById('matchComparisonHint').style.display = n >= 2 ? 'none' : '';
 }
 
+// matchDateは "DD/MM/YYYY" 形式なので、月ごとにグループ化するためのキー "YYYY/MM" を作る
+function matchYearMonth(matchDate) {
+  const parts = matchDate.split('/');
+  if (parts.length === 3) {
+    const [, month, year] = parts;
+    return `${year}/${month}`;
+  }
+  return '';
+}
+
+// 試合一覧は日付の新しい順に並んでいる前提で、月が変わるたびに見出し
+// （「YYYY年M月」＋「この月をすべて選択／選択を解除」ボタン）を差し込む
 function renderMatchChecklist(matches) {
   const list = document.getElementById('matchChecklist');
   list.innerHTML = '';
+  let currentMonth = null;
   matches.forEach(m => {
+    const ym = matchYearMonth(m.matchDate);
+    if (ym !== currentMonth) {
+      currentMonth = ym;
+      const monthMatches = matches.filter(x => matchYearMonth(x.matchDate) === ym);
+      const header = document.createElement('div');
+      header.className = 'match-month-header';
+      const monthLabel = document.createElement('span');
+      const [year, month] = ym.split('/');
+      monthLabel.textContent = year ? `${year}年${parseInt(month, 10)}月` : '';
+      const selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.className = 'month-select-btn';
+      const allSelected = monthMatches.length > 0 && monthMatches.every(x => selectedMatchKeys.has(matchKey(x)));
+      selectBtn.textContent = allSelected ? 'この月の選択を解除' : 'この月をすべて選択';
+      selectBtn.addEventListener('click', () => {
+        const currentlyAll = monthMatches.every(x => selectedMatchKeys.has(matchKey(x)));
+        monthMatches.forEach(x => {
+          if (currentlyAll) selectedMatchKeys.delete(matchKey(x));
+          else selectedMatchKeys.add(matchKey(x));
+        });
+        updateMatchListToggleLabel();
+        clearDropZoneStatus();
+        renderMatchChecklist(matches);
+        renderMatchSelection();
+      });
+      header.appendChild(monthLabel);
+      header.appendChild(selectBtn);
+      list.appendChild(header);
+    }
     const label = document.createElement('label');
     label.className = 'player-check-item';
     const cb = document.createElement('input');
