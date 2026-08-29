@@ -1077,7 +1077,7 @@ function dvPlayerSummary(number, s, roster, name) {
 function dvTeamStats(statsDict) {
   const total = dvEmptyPlayerStats();
   Object.values(statsDict).forEach(s => {
-    Object.keys(total).forEach(key => { total[key] += s[key]; });
+    Object.keys(total).forEach(key => { total[key] += (s[key] || 0); });
   });
   return total;
 }
@@ -1395,18 +1395,22 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
       { key: 'feint', label: 'フェイント' },
       { key: 'other', label: 'その他' },
     ];
-    document.getElementById('detailTechTiles').innerHTML = techTypes.map(t => {
-      const attempts = totalStats[`tech_${t.key}_attempts`];
-      const points = totalStats[`tech_${t.key}_points`];
-      const share = dvRate(attempts, totalStats.attempts);
-      const killRate = totalStats[`tech_${t.key}_kill_rate`];
-      const hint = attempts > 0
-        ? `${attempts}本中${points}本決定（決定率${pct(killRate)}）`
-        : '0本';
+    // 使っていない打法（本数0）のタイルはそもそも出さず、実際に使った打法だけ表示する。
+    const techTiles = techTypes.map(t => {
+      // 打法別フィールドが無い古いデータ（未再集計の試合など）でも NaN% にならないよう、
+      // 値が無い場合は 0 として扱う。
+      const attempts = totalStats[`tech_${t.key}_attempts`] || 0;
+      if (attempts <= 0) return null;
+      const points = totalStats[`tech_${t.key}_points`] || 0;
+      const baseAttempts = totalStats.attempts || 0;
+      const share = baseAttempts > 0 ? attempts / baseAttempts : 0;
+      const killRate = points / attempts;
+      const hint = `${attempts}本中${points}本決定（決定率${pct(killRate)}）`;
       return `<div class="stat-tile"><div class="k">${t.label}</div>`
         + `<div class="v">${pct(share)}</div>`
         + `<div class="hint" style="margin-top:2px">${hint}</div></div>`;
-    }).join('');
+    }).filter(Boolean);
+    document.getElementById('detailTechTiles').innerHTML = techTiles.join('');
   } else {
     techSection.style.display = 'none';
   }
