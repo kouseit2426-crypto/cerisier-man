@@ -203,7 +203,7 @@
 
   /* 折り畳み（アコーディオン）。開閉のたびに中身を作り直さなくていいよう、
      表示・非表示はブラウザ標準の<details>/<summary>に任せている。 */
-  .accordion { border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; overflow: hidden; }
+  .accordion { border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; overflow: hidden; background: var(--surface-1); }
   .accordion:first-child { margin-top: 0; }
   .accordion:last-child { margin-bottom: 0; }
   .accordion > summary {
@@ -219,7 +219,7 @@
   }
   .accordion[open] > summary::after { transform: rotate(180deg); }
   .accordion[open] > summary { border-bottom: 1px solid var(--border); }
-  .accordion-body { padding: 16px; }
+  .accordion > .accordion-body { padding: 16px; background: var(--surface-1); }
   .accordion-body > .section-label:first-child { margin-top: 0; }
 
   .section-label { font-size: 17px; color: var(--text-primary); margin: 22px 0 10px; font-weight: 600; }
@@ -331,36 +331,42 @@
             </thead>
             <tbody id="detailSetBody"></tbody>
           </table>
+        </div>
+      </details>
 
-          <div id="detailHardSection" style="display:none">
-            <h3 class="section-label">強打（全セット合計）</h3>
-            <p class="hint" style="margin-top:-6px">フルスイングのスパイクの内訳です。</p>
-            <div class="stat-tiles" id="detailHardTiles"></div>
-            <table>
-              <thead>
-                <tr><th id="detailHardHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
-              </thead>
-              <tbody id="detailHardBody"></tbody>
-            </table>
-          </div>
+      <details class="accordion" id="detailHardSection" style="display:none">
+        <summary>強打（全セット合計）</summary>
+        <div class="accordion-body">
+          <p class="hint" style="margin-top:-6px">フルスイングのスパイクの内訳です。</p>
+          <div class="stat-tiles" id="detailHardTiles"></div>
+          <table>
+            <thead>
+              <tr><th id="detailHardHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+            </thead>
+            <tbody id="detailHardBody"></tbody>
+          </table>
+        </div>
+      </details>
 
-          <div id="detailFeintSection" style="display:none">
-            <h3 class="section-label">フェイント（全セット合計）</h3>
-            <p class="hint" style="margin-top:-6px">軽く落とすプレーの内訳です。</p>
-            <div class="stat-tiles" id="detailFeintTiles"></div>
-            <table>
-              <thead>
-                <tr><th id="detailFeintHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
-              </thead>
-              <tbody id="detailFeintBody"></tbody>
-            </table>
-          </div>
+      <details class="accordion" id="detailFeintSection" style="display:none">
+        <summary>フェイント（全セット合計）</summary>
+        <div class="accordion-body">
+          <p class="hint" style="margin-top:-6px">軽く落とすプレーの内訳です。</p>
+          <div class="stat-tiles" id="detailFeintTiles"></div>
+          <table>
+            <thead>
+              <tr><th id="detailFeintHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+            </thead>
+            <tbody id="detailFeintBody"></tbody>
+          </table>
+        </div>
+      </details>
 
-          <div id="detailRotationSection" style="display:none">
-            <h3 class="section-label">ローテーション別（スパイク・全セット合計）</h3>
-            <p class="hint" style="margin-top:-6px">どのローテーションで多く打っているか・決まっているかの目安です。</p>
-            <div id="detailRotationBody"></div>
-          </div>
+      <details class="accordion" id="detailRotationSection" style="display:none">
+        <summary>ローテーション別（スパイク・全セット合計）</summary>
+        <div class="accordion-body">
+          <p class="hint" style="margin-top:-6px">どのローテーションで多く打っているか・決まっているかの目安です。</p>
+          <div id="detailRotationBody"></div>
         </div>
       </details>
     </div>
@@ -405,23 +411,32 @@
       <div id="comparisonBody"></div>
     </div>
 
-    <div class="card" id="startingLineupsCard">
-      <h3 class="section-label" style="margin-top:0">スタメン（セット開始時点）</h3>
-      <p class="hint" style="margin-top:-6px">P1が基本的にサーブ位置（次に回転して前衛に上がる並び）です。セットを選んでください。</p>
-      <div class="player-grid" id="startingLineupSetButtons"></div>
-      <div id="startingLineupBody" style="margin-top:16px"></div>
-    </div>
+    <details class="accordion" id="startingLineupsCard">
+      <summary>スタメン（セット開始時点）</summary>
+      <div class="accordion-body">
+        <p class="hint" style="margin-top:-6px">P1が基本的にサーブ位置（次に回転して前衛に上がる並び）です。セットを選んでください。</p>
+        <div class="player-grid" id="startingLineupSetButtons"></div>
+        <div id="startingLineupBody" style="margin-top:16px"></div>
+      </div>
+    </details>
 
-    <div class="card" id="leaderboardCard">
-      <h3 class="section-label" id="leaderboardLabel" style="margin-top:0">選手ランキング（この試合）</h3>
-      <p class="hint" style="margin-top:-6px">
-        規定本数（3本）以上の選手が対象です。
-      </p>
-      <div id="leaderboardBody"></div>
-    </div>
+    <details class="accordion" id="leaderboardCard">
+      <summary id="leaderboardLabel">選手ランキング（この試合）</summary>
+      <div class="accordion-body">
+        <p class="hint" style="margin-top:-6px">
+          規定本数（3本）以上の選手が対象です。
+        </p>
+        <div id="leaderboardBody"></div>
+      </div>
+    </details>
   </div>
 
   <div class="page" id="page2">
+    <div class="detail-header">
+      <h2 style="font-size:15px;color:var(--text-muted);font-weight:600">チーム分析</h2>
+      <button type="button" class="expand-all-btn" id="expandAllBtn2">すべて展開</button>
+    </div>
+
     <div class="card">
       <details class="accordion" id="sideOutBreakAccordion">
         <summary id="sideOutBreakLabel">サイドアウト率・ブレイク率（チーム全体）</summary>
@@ -431,7 +446,12 @@
           </p>
           <div class="player-grid" id="sideOutBreakSetButtons"></div>
           <div class="stat-tiles" id="sideOutBreakTiles" style="margin-top:16px"></div>
-          <h3 class="section-label" id="sideOutBreakByRotationLabel">ローテーション別（全セット合計）</h3>
+        </div>
+      </details>
+
+      <details class="accordion" id="sideOutBreakByRotationAccordion">
+        <summary id="sideOutBreakByRotationLabel">ローテーション別（全セット合計）</summary>
+        <div class="accordion-body">
           <p class="hint" style="margin-top:-6px">
             どのローテーションで失点しやすいか・得点しやすいかの目安です。
           </p>
@@ -441,15 +461,17 @@
       </details>
     </div>
 
-    <div class="card" id="scoringPatternCard">
-      <h3 class="section-label" id="scoringPatternLabel" style="margin-top:0">得点パターン（チーム全体）</h3>
-      <p class="hint" style="margin-top:-6px">
-        自チームがどうやって得点し、どうやって失点しているかの内訳です。「相手ミス」「自チームミス」は、
-        自分たちの決定力・安定感がどれくらい得点に影響しているかの目安になります。
-      </p>
-      <div class="player-grid" id="scoringPatternSetButtons" style="margin-bottom:12px"></div>
-      <div id="scoringPatternBody"></div>
-    </div>
+    <details class="accordion" id="scoringPatternCard">
+      <summary id="scoringPatternLabel">得点パターン（チーム全体）</summary>
+      <div class="accordion-body">
+        <p class="hint" style="margin-top:-6px">
+          自チームがどうやって得点し、どうやって失点しているかの内訳です。「相手ミス」「自チームミス」は、
+          自分たちの決定力・安定感がどれくらい得点に影響しているかの目安になります。
+        </p>
+        <div class="player-grid" id="scoringPatternSetButtons" style="margin-bottom:12px"></div>
+        <div id="scoringPatternBody"></div>
+      </div>
+    </details>
 
     <div class="card" id="opponentAnalysisCard" style="display:none">
       <h3 class="section-label" id="opponentAnalysisTitle" style="margin-top:0">相手チーム分析</h3>
@@ -468,34 +490,43 @@
       <p class="hint" id="opponentRotationInsightLine" style="margin-top:12px"></p>
     </div>
 
-    <div class="card" id="scoreProgressionCard">
-      <h3 class="section-label" style="margin-top:0">セット経過（得点推移）</h3>
-      <p class="hint" style="margin-top:-6px">
-        ラリーが決まるたびに、その時点のスコアをグラフにしています。セットを選んでください。
-      </p>
-      <div class="player-grid" id="scoreProgressionSetButtons"></div>
-      <div id="scoreProgressionChartArea" style="margin-top:16px"></div>
-      <h3 class="section-label" id="runHighlightsLabel">セットごとの流れハイライト</h3>
-      <div class="player-grid" id="runHighlightsSetButtons" style="margin-bottom:12px"></div>
-      <div id="runHighlightsBody"></div>
-    </div>
+    <details class="accordion" id="scoreProgressionCard">
+      <summary>セット経過（得点推移）</summary>
+      <div class="accordion-body">
+        <p class="hint" style="margin-top:-6px">
+          ラリーが決まるたびに、その時点のスコアをグラフにしています。セットを選んでください。
+        </p>
+        <div class="player-grid" id="scoreProgressionSetButtons"></div>
+        <div id="scoreProgressionChartArea" style="margin-top:16px"></div>
+      </div>
+    </details>
 
-    <div class="card" id="rotationCard">
-      <h3 class="section-label" id="rotationCardLabel" style="margin-top:0">ローテーション別 攻撃タイプ分布（チーム全体）</h3>
-      <p class="hint" style="margin-top:-6px" id="rotationCardHint">
-        セット開始時のローテーションをS1とし、自チームが1回転するたびにS2→S3…と数えています。
-        攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。セットを選んでください。
-      </p>
-      <div class="player-grid" id="rotationSetButtons"></div>
-      <h4 class="section-label" id="tossDistributionLabel" style="font-size:15px">トス配分（％）</h4>
-      <p class="hint" style="margin-top:-6px">
-        選んだセット（または全セット合計）の中で、レフト／ライト／ミドル／パイプ／その他それぞれに
-        何％のトスが上がったかです（本数は攻撃コンビの分類による集計本数）。
-        「その他」は主にツー（セッターが2本目で自ら打ったプレー）で、まれにコンビの分類が読み取れなかったものも含みます。
-      </p>
-      <div id="tossDistributionBody"></div>
-      <div id="rotationTables" style="margin-top:16px"></div>
-    </div>
+    <details class="accordion" id="runHighlightsCard">
+      <summary id="runHighlightsLabel">セットごとの流れハイライト</summary>
+      <div class="accordion-body">
+        <div class="player-grid" id="runHighlightsSetButtons" style="margin-bottom:12px"></div>
+        <div id="runHighlightsBody"></div>
+      </div>
+    </details>
+
+    <details class="accordion" id="rotationCard">
+      <summary id="rotationCardLabel">ローテーション別 攻撃タイプ分布（チーム全体）</summary>
+      <div class="accordion-body">
+        <p class="hint" style="margin-top:-6px" id="rotationCardHint">
+          セット開始時のローテーションをS1とし、自チームが1回転するたびにS2→S3…と数えています。
+          攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。セットを選んでください。
+        </p>
+        <div class="player-grid" id="rotationSetButtons"></div>
+        <h4 class="section-label" id="tossDistributionLabel" style="font-size:15px">トス配分（％）</h4>
+        <p class="hint" style="margin-top:-6px">
+          選んだセット（または全セット合計）の中で、レフト／ライト／ミドル／パイプ／その他それぞれに
+          何％のトスが上がったかです（本数は攻撃コンビの分類による集計本数）。
+          「その他」は主にツー（セッターが2本目で自ら打ったプレー）で、まれにコンビの分類が読み取れなかったものも含みます。
+        </p>
+        <div id="tossDistributionBody"></div>
+        <div id="rotationTables" style="margin-top:16px"></div>
+      </div>
+    </details>
   </div>
   </div>
   </div>
@@ -1425,6 +1456,21 @@ function setupExpandAllButton() {
   if (!btn) return;
   btn.addEventListener('click', () => {
     const sections = collapsibleSectionsInDetail();
+    const allOpen = sections.length > 0 && sections.every(d => d.open);
+    sections.forEach(d => { d.open = !allOpen; });
+    btn.textContent = allOpen ? 'すべて展開' : 'すべて折りたたむ';
+  });
+}
+
+// チーム分析（page2）側の折り畳みをまとめて開閉するボタン。
+function collapsibleSectionsInPage2() {
+  return Array.from(document.querySelectorAll('#page2 .accordion'));
+}
+function setupExpandAllButton2() {
+  const btn = document.getElementById('expandAllBtn2');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const sections = collapsibleSectionsInPage2();
     const allOpen = sections.length > 0 && sections.every(d => d.open);
     sections.forEach(d => { d.open = !allOpen; });
     btn.textContent = allOpen ? 'すべて展開' : 'すべて折りたたむ';
@@ -3264,6 +3310,7 @@ setupPlayerListToggle();
 setupSidebarToggle();
 setupMatchListToggle();
 setupExpandAllButton();
+setupExpandAllButton2();
 
 fetch('matches.json')
   .then(res => res.ok ? res.json() : [])
