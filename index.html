@@ -292,7 +292,7 @@
         <span id="detailNumber"></span>
       </div>
 
-      <h3 class="section-label">アタック（全セット合計）</h3>
+      <h3 class="section-label">スパイク（全セット合計）</h3>
       <div class="stat-tiles" id="detailTiles"></div>
       <table>
         <thead>
@@ -301,17 +301,32 @@
         <tbody id="detailSetBody"></tbody>
       </table>
 
-      <div id="detailTechSection" style="display:none">
-        <h3 class="section-label" id="detailTechLabel">打法別（全セット合計）</h3>
-        <p class="hint" style="margin-top:-6px">
-          強打（フルスイングのスパイク）とフェイント（軽く落とすプレー）の内訳です。
-          コードに打法が記録されていない攻撃は「その他」に入ります。
-        </p>
-        <div class="stat-tiles" id="detailTechTiles"></div>
+      <div id="detailHardSection" style="display:none">
+        <h3 class="section-label">強打（全セット合計）</h3>
+        <p class="hint" style="margin-top:-6px">フルスイングのスパイクの内訳です。</p>
+        <div class="stat-tiles" id="detailHardTiles"></div>
+        <table>
+          <thead>
+            <tr><th id="detailHardHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+          </thead>
+          <tbody id="detailHardBody"></tbody>
+        </table>
+      </div>
+
+      <div id="detailFeintSection" style="display:none">
+        <h3 class="section-label">フェイント（全セット合計）</h3>
+        <p class="hint" style="margin-top:-6px">軽く落とすプレーの内訳です。</p>
+        <div class="stat-tiles" id="detailFeintTiles"></div>
+        <table>
+          <thead>
+            <tr><th id="detailFeintHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+          </thead>
+          <tbody id="detailFeintBody"></tbody>
+        </table>
       </div>
 
       <div id="detailRotationSection" style="display:none">
-        <h3 class="section-label">ローテーション別（アタック・全セット合計）</h3>
+        <h3 class="section-label">ローテーション別（スパイク・全セット合計）</h3>
         <p class="hint" style="margin-top:-6px">どのローテーションで多く打っているか・決まっているかの目安です。</p>
         <div id="detailRotationBody"></div>
       </div>
@@ -1355,6 +1370,52 @@ function markSelected(chipEl) {
   chipEl.classList.add('selected');
 }
 
+// 「強打」「フェイント」それぞれについて、スパイク（全セット合計）と同じ形式
+// （統計タイル＋セット別／試合別の内訳表）で表示する。setRowsは選手・チームの
+// セットごと（単一試合表示時）または試合ごと（複数試合の合算表示時）の集計で、
+// どちらも通常のplayer_summaryと同じ形（tech_*フィールドを含む）になっている。
+function renderTechDetailSection(idPrefix, techKey, totalStats, setRows) {
+  const section = document.getElementById(`detail${idPrefix}Section`);
+  if (!totalStats || totalStats.attempts <= 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+
+  const attempts = totalStats[`tech_${techKey}_attempts`] || 0;
+  const points = totalStats[`tech_${techKey}_points`] || 0;
+  const errors = totalStats[`tech_${techKey}_errors`] || 0;
+  const killRate = attempts > 0 ? points / attempts : null;
+  document.getElementById(`detail${idPrefix}Tiles`).innerHTML = `
+    <div class="stat-tile"><div class="k">打数</div><div class="v">${attempts}</div></div>
+    <div class="stat-tile"><div class="k">得点</div><div class="v">${points}</div></div>
+    <div class="stat-tile"><div class="k">ミス</div><div class="v">${errors}</div></div>
+    <div class="stat-tile"><div class="k">決定率</div><div class="v">${pct(killRate)}</div></div>
+  `;
+
+  const hasMatchLabels = setRows.some(sp => sp && sp.matchLabel);
+  document.getElementById(`detail${idPrefix}HeaderLabel`).textContent = hasMatchLabels ? '試合' : 'セット';
+
+  const body = document.getElementById(`detail${idPrefix}Body`);
+  body.innerHTML = '';
+  setRows.forEach(sp => {
+    if (sp && sp.attempts > 0) {
+      // フェイントを1本も使っていないセット・試合でも行自体は出し、本数は0として表示する。
+      const a = sp[`tech_${techKey}_attempts`] || 0;
+      const p = sp[`tech_${techKey}_points`] || 0;
+      const e = sp[`tech_${techKey}_errors`] || 0;
+      const kr = a > 0 ? p / a : null;
+      const tr = document.createElement('tr');
+      const rowLabel = sp.matchLabel ? escapeHtml(sp.matchLabel) : `第${sp.setNumber}セット`;
+      tr.innerHTML = `<td>${rowLabel}</td><td>${a}</td><td>${p}</td><td>${e}</td><td>${pct(kr)}</td>`;
+      body.appendChild(tr);
+    }
+  });
+  if (!body.children.length) {
+    body.innerHTML = '<tr><td colspan="5" class="hint">出場記録がありません</td></tr>';
+  }
+}
+
 function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
   document.getElementById('detailCard').style.display = 'block';
   document.getElementById('detailCard2').style.display = 'block';
@@ -1387,33 +1448,8 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
     setBody.innerHTML = '<tr><td colspan="7" class="hint">出場記録がありません</td></tr>';
   }
 
-  const techSection = document.getElementById('detailTechSection');
-  if (totalStats.attempts > 0) {
-    techSection.style.display = '';
-    const techTypes = [
-      { key: 'hard', label: '強打' },
-      { key: 'feint', label: 'フェイント' },
-      { key: 'other', label: 'その他' },
-    ];
-    // 使っていない打法（本数0）のタイルはそもそも出さず、実際に使った打法だけ表示する。
-    const techTiles = techTypes.map(t => {
-      // 打法別フィールドが無い古いデータ（未再集計の試合など）でも NaN% にならないよう、
-      // 値が無い場合は 0 として扱う。
-      const attempts = totalStats[`tech_${t.key}_attempts`] || 0;
-      if (attempts <= 0) return null;
-      const points = totalStats[`tech_${t.key}_points`] || 0;
-      const baseAttempts = totalStats.attempts || 0;
-      const share = baseAttempts > 0 ? attempts / baseAttempts : 0;
-      const killRate = points / attempts;
-      const hint = `${attempts}本中${points}本決定（決定率${pct(killRate)}）`;
-      return `<div class="stat-tile"><div class="k">${t.label}</div>`
-        + `<div class="v">${pct(share)}</div>`
-        + `<div class="hint" style="margin-top:2px">${hint}</div></div>`;
-    }).filter(Boolean);
-    document.getElementById('detailTechTiles').innerHTML = techTiles.join('');
-  } else {
-    techSection.style.display = 'none';
-  }
+  renderTechDetailSection('Hard', 'hard', totalStats, setRows);
+  renderTechDetailSection('Feint', 'feint', totalStats, setRows);
 
   const rotationSection = document.getElementById('detailRotationSection');
   if (rotationRows && rotationRows.length) {
@@ -1498,7 +1534,7 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
   // ミスの内訳（控えめに一行だけ。派手な表やグラフにはしない）
   const errBreakdownEl = document.getElementById('errorBreakdownLine');
   const errParts = [
-    ['アタック', totalStats.errors],
+    ['スパイク', totalStats.errors],
     ['サーブ', totalStats.serve_errors],
     ['レシーブ', totalStats.receive_errors],
     ['ブロック', totalStats.block_errors],
@@ -1533,7 +1569,8 @@ function renderSingleMatchPlayerView() {
       document.getElementById('detailTiles').innerHTML = '';
       document.getElementById('detailSetBody').innerHTML =
         '<tr><td colspan="7" class="hint">出場記録がありません</td></tr>';
-      document.getElementById('detailTechSection').style.display = 'none';
+      document.getElementById('detailHardSection').style.display = 'none';
+      document.getElementById('detailFeintSection').style.display = 'none';
       document.getElementById('detailRotationSection').style.display = 'none';
       return;
     }
@@ -1578,7 +1615,8 @@ function renderCombinedPlayerView(nums) {
         document.getElementById('detailTiles').innerHTML = '';
         document.getElementById('detailSetBody').innerHTML =
           '<tr><td colspan="7" class="hint">出場記録がありません</td></tr>';
-        document.getElementById('detailTechSection').style.display = 'none';
+        document.getElementById('detailHardSection').style.display = 'none';
+        document.getElementById('detailFeintSection').style.display = 'none';
         document.getElementById('detailRotationSection').style.display = 'none';
         return;
       }
@@ -1651,7 +1689,7 @@ function comparisonTableHtml(players) {
   });
   html += '</tr></thead><tbody>';
 
-  html += comparisonSectionHtml('アタック（全セット合計）', colspan);
+  html += comparisonSectionHtml('スパイク（全セット合計）', colspan);
   html += comparisonRowHtml('打数', players, p => p.attempts, false);
   html += comparisonRowHtml('得点', players, p => p.points, false);
   html += comparisonRowHtml('ミス', players, p => p.errors, false);
@@ -2221,8 +2259,8 @@ function videoLinkForSeconds(url, seconds) {
 }
 
 const VIDEO_CLIP_CATEGORIES = [
-  { key: 'attack_kill', label: 'アタック決定', skill: 'A', evaluation: '#' },
-  { key: 'attack_error', label: 'アタックミス', skill: 'A', evaluation: '=' },
+  { key: 'attack_kill', label: 'スパイク決定', skill: 'A', evaluation: '#' },
+  { key: 'attack_error', label: 'スパイクミス', skill: 'A', evaluation: '=' },
   { key: 'serve_ace', label: 'サーブエース', skill: 'S', evaluation: '#' },
   { key: 'serve_error', label: 'サーブミス', skill: 'S', evaluation: '=' },
   { key: 'receive_a', label: 'レシーブ（Aパス）', skill: 'R', evaluation: '#' },
@@ -2321,7 +2359,7 @@ function scoringPatternHtml(pattern) {
     `<div class="stat-tile"><div class="k">${label}</div><div class="v">${val}<br><span style="font-size:12px;font-weight:400">${pct(dvRate(val, total))}</span></div></div>`;
   let html = `<h3 class="section-label" style="margin-top:0">得点（合計${ownTotal}点）</h3>`;
   html += '<div class="stat-tiles">'
-    + tile('アタック決定', c.ownKill, ownTotal)
+    + tile('スパイク決定', c.ownKill, ownTotal)
     + tile('サーブエース', c.ownAce, ownTotal)
     + tile('ブロック得点', c.ownBlock, ownTotal)
     + tile('相手ミス', c.opponentError, ownTotal)
@@ -2640,7 +2678,7 @@ function playerLeaderboardHtml(players) {
   byServe.forEach(p => { p.serve_good_count = (p.serve_aces || 0) + (p.serve_effective || 0); });
 
   return '<div class="rank-grid">'
-    + `<div><h4>アタック決定率</h4>${rowsHtml(byKill, 'kill_rate', 'points', 'attempts')}</div>`
+    + `<div><h4>スパイク決定率</h4>${rowsHtml(byKill, 'kill_rate', 'points', 'attempts')}</div>`
     + `<div><h4>サーブ効果率</h4>${rowsHtml(byServe, 'serve_efficiency', 'serve_good_count', 'serve_attempts')}</div>`
     + `<div><h4>レシーブA率</h4>${rowsHtml(byReceive, 'receive_a_rate', 'receive_a', 'receive_attempts')}</div>`
     + '</div>';
@@ -2688,7 +2726,7 @@ function matchComparisonTableHtml(matches) {
   });
   html += '</tr>';
 
-  html += matchComparisonSectionHtml('アタック（全セット合計）', colspan);
+  html += matchComparisonSectionHtml('スパイク（全セット合計）', colspan);
   html += matchComparisonRowHtml('打数', matches, m => m.team.total.attempts, false);
   html += matchComparisonRowHtml('得点', matches, m => m.team.total.points, false);
   html += matchComparisonRowHtml('ミス', matches, m => m.team.total.errors, false);
@@ -2848,7 +2886,7 @@ function playerAcrossMatchesTableHtml(number, matches) {
   });
   html += '</tr></thead><tbody>';
 
-  html += matchComparisonSectionHtml('アタック（全セット合計）', colspan);
+  html += matchComparisonSectionHtml('スパイク（全セット合計）', colspan);
   html += row('打数', p => p.attempts, false);
   html += row('得点', p => p.points, false);
   html += row('ミス', p => p.errors, false);
@@ -2974,7 +3012,7 @@ function combineRotationRows(rowsList) {
 // 選手個人の「ローテーション別のアタック出場状況」の表
 function playerRotationTableHtml(rows) {
   const withAttempts = (rows || []).filter(r => r.attempts > 0);
-  if (!withAttempts.length) return '<p class="hint">この選手のアタック出場記録がありません。</p>';
+  if (!withAttempts.length) return '<p class="hint">この選手のスパイク出場記録がありません。</p>';
   let html = '<div style="overflow-x:auto"><table class="rotation-table"><thead><tr>'
     + '<th>ローテ</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th>'
     + '</tr></thead><tbody>';
@@ -3051,7 +3089,7 @@ function combinedTableHtml(stats) {
     return `<tr><td>${escapeHtml(label)}</td><td>${isPct ? pct(value) : value}</td></tr>`;
   }
 
-  html += matchComparisonSectionHtml('アタック（全セット合計）', colspan);
+  html += matchComparisonSectionHtml('スパイク（全セット合計）', colspan);
   html += row('打数', stats.attempts, false);
   html += row('得点', stats.points, false);
   html += row('ミス', stats.errors, false);
