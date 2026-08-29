@@ -1400,9 +1400,12 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
       const points = totalStats[`tech_${t.key}_points`];
       const share = dvRate(attempts, totalStats.attempts);
       const killRate = totalStats[`tech_${t.key}_kill_rate`];
+      const hint = attempts > 0
+        ? `${attempts}本中${points}本決定（決定率${pct(killRate)}）`
+        : '0本';
       return `<div class="stat-tile"><div class="k">${t.label}</div>`
         + `<div class="v">${pct(share)}</div>`
-        + `<div class="hint" style="margin-top:2px">${attempts}本中${points}本決定（決定率${pct(killRate)}）</div></div>`;
+        + `<div class="hint" style="margin-top:2px">${hint}</div></div>`;
     }).join('');
   } else {
     techSection.style.display = 'none';
