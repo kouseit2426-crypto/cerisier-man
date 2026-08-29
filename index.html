@@ -194,6 +194,34 @@
   .detail-header h2 { margin: 0; font-size: 18px; }
   .detail-header span { color: var(--text-muted); font-size: 13px; }
 
+  .expand-all-btn {
+    margin-left: auto; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    padding: 7px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--page-plane); color: var(--text-secondary);
+  }
+  .expand-all-btn:hover { background: var(--grid); }
+
+  /* 折り畳み（アコーディオン）。開閉のたびに中身を作り直さなくていいよう、
+     表示・非表示はブラウザ標準の<details>/<summary>に任せている。 */
+  .accordion { border: 1px solid var(--border); border-radius: 12px; margin: 16px 0; overflow: hidden; }
+  .accordion:first-child { margin-top: 0; }
+  .accordion:last-child { margin-bottom: 0; }
+  .accordion > summary {
+    list-style: none; cursor: pointer; padding: 14px 16px;
+    font-size: 17px; font-weight: 600; color: var(--text-primary);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .accordion > summary:hover { background: var(--grid); }
+  .accordion > summary::-webkit-details-marker { display: none; }
+  .accordion > summary::after {
+    content: '▾'; color: var(--text-muted); font-size: 13px; flex-shrink: 0;
+    transition: transform .15s;
+  }
+  .accordion[open] > summary::after { transform: rotate(180deg); }
+  .accordion[open] > summary { border-bottom: 1px solid var(--border); }
+  .accordion-body { padding: 16px; }
+  .accordion-body > .section-label:first-child { margin-top: 0; }
+
   .section-label { font-size: 17px; color: var(--text-primary); margin: 22px 0 10px; font-weight: 600; }
   .stat-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
   @media (max-width: 640px) { .stat-tiles { grid-template-columns: repeat(2, 1fr); } }
@@ -290,68 +318,81 @@
       <div class="detail-header">
         <h2 id="detailName"></h2>
         <span id="detailNumber"></span>
+        <button type="button" class="expand-all-btn" id="expandAllBtn">すべて展開</button>
       </div>
 
-      <h3 class="section-label">スパイク（全セット合計）</h3>
-      <div class="stat-tiles" id="detailTiles"></div>
-      <table>
-        <thead>
-          <tr><th id="detailSetHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>被ブロック</th><th>決定率</th><th>効果率</th></tr>
-        </thead>
-        <tbody id="detailSetBody"></tbody>
-      </table>
+      <details class="accordion" id="spikeAccordion">
+        <summary>スパイク（全セット合計）</summary>
+        <div class="accordion-body">
+          <div class="stat-tiles" id="detailTiles"></div>
+          <table>
+            <thead>
+              <tr><th id="detailSetHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>被ブロック</th><th>決定率</th><th>効果率</th></tr>
+            </thead>
+            <tbody id="detailSetBody"></tbody>
+          </table>
 
-      <div id="detailHardSection" style="display:none">
-        <h3 class="section-label">強打（全セット合計）</h3>
-        <p class="hint" style="margin-top:-6px">フルスイングのスパイクの内訳です。</p>
-        <div class="stat-tiles" id="detailHardTiles"></div>
-        <table>
-          <thead>
-            <tr><th id="detailHardHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
-          </thead>
-          <tbody id="detailHardBody"></tbody>
-        </table>
-      </div>
+          <div id="detailHardSection" style="display:none">
+            <h3 class="section-label">強打（全セット合計）</h3>
+            <p class="hint" style="margin-top:-6px">フルスイングのスパイクの内訳です。</p>
+            <div class="stat-tiles" id="detailHardTiles"></div>
+            <table>
+              <thead>
+                <tr><th id="detailHardHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+              </thead>
+              <tbody id="detailHardBody"></tbody>
+            </table>
+          </div>
 
-      <div id="detailFeintSection" style="display:none">
-        <h3 class="section-label">フェイント（全セット合計）</h3>
-        <p class="hint" style="margin-top:-6px">軽く落とすプレーの内訳です。</p>
-        <div class="stat-tiles" id="detailFeintTiles"></div>
-        <table>
-          <thead>
-            <tr><th id="detailFeintHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
-          </thead>
-          <tbody id="detailFeintBody"></tbody>
-        </table>
-      </div>
+          <div id="detailFeintSection" style="display:none">
+            <h3 class="section-label">フェイント（全セット合計）</h3>
+            <p class="hint" style="margin-top:-6px">軽く落とすプレーの内訳です。</p>
+            <div class="stat-tiles" id="detailFeintTiles"></div>
+            <table>
+              <thead>
+                <tr><th id="detailFeintHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+              </thead>
+              <tbody id="detailFeintBody"></tbody>
+            </table>
+          </div>
 
-      <div id="detailRotationSection" style="display:none">
-        <h3 class="section-label">ローテーション別（スパイク・全セット合計）</h3>
-        <p class="hint" style="margin-top:-6px">どのローテーションで多く打っているか・決まっているかの目安です。</p>
-        <div id="detailRotationBody"></div>
-      </div>
+          <div id="detailRotationSection" style="display:none">
+            <h3 class="section-label">ローテーション別（スパイク・全セット合計）</h3>
+            <p class="hint" style="margin-top:-6px">どのローテーションで多く打っているか・決まっているかの目安です。</p>
+            <div id="detailRotationBody"></div>
+          </div>
+        </div>
+      </details>
     </div>
 
     <div class="card" id="detailCard2">
-      <h3 class="section-label" id="blockSectionLabel" style="margin-top:0">ブロック（全セット合計）</h3>
-      <div class="stat-tiles" id="blockTiles"></div>
+      <details class="accordion" id="blockAccordion">
+        <summary id="blockSectionLabel">ブロック（全セット合計）</summary>
+        <div class="accordion-body"><div class="stat-tiles" id="blockTiles"></div></div>
+      </details>
 
-      <h3 class="section-label" id="serveSectionLabel">サーブ（全セット合計）</h3>
-      <div class="stat-tiles" id="serveTiles"></div>
+      <details class="accordion" id="serveAccordion">
+        <summary id="serveSectionLabel">サーブ（全セット合計）</summary>
+        <div class="accordion-body"><div class="stat-tiles" id="serveTiles"></div></div>
+      </details>
 
-      <h3 class="section-label" id="receiveSectionLabel">レシーブ（全セット合計）</h3>
-      <div class="stat-tiles" id="receiveTiles"></div>
+      <details class="accordion" id="receiveAccordion">
+        <summary id="receiveSectionLabel">レシーブ（全セット合計）</summary>
+        <div class="accordion-body"><div class="stat-tiles" id="receiveTiles"></div></div>
+      </details>
 
-      <div id="videoClipsSection" style="display:none">
-        <h3 class="section-label">プレー映像</h3>
-        <p class="hint" style="margin-top:-6px">
-          プレーを押すと、その場面からすぐに動画が再生されます（動画側の時刻合わせが多少ずれることがあります）。
-        </p>
-        <div class="video-player-wrap" id="videoPlayerWrap" style="display:none">
-          <iframe id="videoPlayerFrame" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      <details class="accordion" id="videoClipsSection" style="display:none">
+        <summary>プレー映像</summary>
+        <div class="accordion-body">
+          <p class="hint" style="margin-top:-6px">
+            プレーを押すと、その場面からすぐに動画が再生されます（動画側の時刻合わせが多少ずれることがあります）。
+          </p>
+          <div class="video-player-wrap" id="videoPlayerWrap" style="display:none">
+            <iframe id="videoPlayerFrame" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          </div>
+          <div id="videoClipsBody"></div>
         </div>
-        <div id="videoClipsBody"></div>
-      </div>
+      </details>
 
       <p class="hint" id="errorBreakdownLine" style="display:none;margin-top:16px;margin-bottom:0"></p>
     </div>
@@ -382,18 +423,22 @@
 
   <div class="page" id="page2">
     <div class="card">
-      <h3 class="section-label" id="sideOutBreakLabel" style="margin-top:0">サイドアウト率・ブレイク率（チーム全体）</h3>
-      <p class="hint" style="margin-top:-6px" id="sideOutBreakHint">
-        サイドアウト率＝相手のサーブを受けたラリーで勝った割合／ブレイク率＝自分たちのサーブのラリーで勝った割合です。セットを選んでください。
-      </p>
-      <div class="player-grid" id="sideOutBreakSetButtons"></div>
-      <div class="stat-tiles" id="sideOutBreakTiles" style="margin-top:16px"></div>
-      <h3 class="section-label" id="sideOutBreakByRotationLabel">ローテーション別（全セット合計）</h3>
-      <p class="hint" style="margin-top:-6px">
-        どのローテーションで失点しやすいか・得点しやすいかの目安です。
-      </p>
-      <div id="sideOutBreakByRotationBody"></div>
-      <p class="hint" id="rotationInsightLine" style="margin-top:12px"></p>
+      <details class="accordion" id="sideOutBreakAccordion">
+        <summary id="sideOutBreakLabel">サイドアウト率・ブレイク率（チーム全体）</summary>
+        <div class="accordion-body">
+          <p class="hint" style="margin-top:-6px" id="sideOutBreakHint">
+            サイドアウト率＝相手のサーブを受けたラリーで勝った割合／ブレイク率＝自分たちのサーブのラリーで勝った割合です。セットを選んでください。
+          </p>
+          <div class="player-grid" id="sideOutBreakSetButtons"></div>
+          <div class="stat-tiles" id="sideOutBreakTiles" style="margin-top:16px"></div>
+          <h3 class="section-label" id="sideOutBreakByRotationLabel">ローテーション別（全セット合計）</h3>
+          <p class="hint" style="margin-top:-6px">
+            どのローテーションで失点しやすいか・得点しやすいかの目安です。
+          </p>
+          <div id="sideOutBreakByRotationBody"></div>
+          <p class="hint" id="rotationInsightLine" style="margin-top:12px"></p>
+        </div>
+      </details>
     </div>
 
     <div class="card" id="scoringPatternCard">
@@ -1365,6 +1410,27 @@ function setupSidebarToggle() {
   });
 }
 
+// 選手詳細（スパイク／ブロック／サーブ／レシーブ）の折り畳みをまとめて開閉するボタン。
+// 押すたびに、今すべて開いているかどうかを見て逆の状態にする。
+function collapsibleSectionsInDetail() {
+  return Array.from(document.querySelectorAll('#detailCard .accordion, #detailCard2 .accordion'));
+}
+function resetDetailAccordions() {
+  collapsibleSectionsInDetail().forEach(d => { d.open = false; });
+  const btn = document.getElementById('expandAllBtn');
+  if (btn) btn.textContent = 'すべて展開';
+}
+function setupExpandAllButton() {
+  const btn = document.getElementById('expandAllBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const sections = collapsibleSectionsInDetail();
+    const allOpen = sections.length > 0 && sections.every(d => d.open);
+    sections.forEach(d => { d.open = !allOpen; });
+    btn.textContent = allOpen ? 'すべて展開' : 'すべて折りたたむ';
+  });
+}
+
 function markSelected(chipEl) {
   document.querySelectorAll('.player-chip').forEach(c => c.classList.remove('selected'));
   chipEl.classList.add('selected');
@@ -1459,11 +1525,11 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
     rotationSection.style.display = 'none';
   }
 
-  const blockLabel = document.getElementById('blockSectionLabel');
+  // 本数が0のスキルは、折り畳みごと（見出しごと）非表示にする。
+  const blockAccordion = document.getElementById('blockAccordion');
   const blockTiles = document.getElementById('blockTiles');
   if (totalStats.block_attempts > 0) {
-    blockLabel.style.display = '';
-    blockTiles.style.display = '';
+    blockAccordion.style.display = '';
     const touch = totalStats.block_touch_own + totalStats.block_touch_opp;
     blockTiles.innerHTML = `
       <div class="stat-tile"><div class="k">本数</div><div class="v">${totalStats.block_attempts}</div></div>
@@ -1473,15 +1539,13 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
       <div class="stat-tile"><div class="k">失点</div><div class="v">${totalStats.block_errors}</div></div>
     `;
   } else {
-    blockLabel.style.display = 'none';
-    blockTiles.style.display = 'none';
+    blockAccordion.style.display = 'none';
   }
 
-  const serveLabel = document.getElementById('serveSectionLabel');
+  const serveAccordion = document.getElementById('serveAccordion');
   const serveTiles = document.getElementById('serveTiles');
   if (totalStats.serve_attempts > 0) {
-    serveLabel.style.display = '';
-    serveTiles.style.display = '';
+    serveAccordion.style.display = '';
     serveTiles.innerHTML = `
       <div class="stat-tile"><div class="k">打数</div><div class="v">${totalStats.serve_attempts}</div></div>
       <div class="stat-tile"><div class="k">エース</div><div class="v">${totalStats.serve_aces}</div></div>
@@ -1491,15 +1555,13 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
       <div class="stat-tile"><div class="k">効果率</div><div class="v">${pct(totalStats.serve_efficiency)}</div></div>
     `;
   } else {
-    serveLabel.style.display = 'none';
-    serveTiles.style.display = 'none';
+    serveAccordion.style.display = 'none';
   }
 
-  const receiveLabel = document.getElementById('receiveSectionLabel');
+  const receiveAccordion = document.getElementById('receiveAccordion');
   const receiveTiles = document.getElementById('receiveTiles');
   if (totalStats.receive_attempts > 0) {
-    receiveLabel.style.display = '';
-    receiveTiles.style.display = '';
+    receiveAccordion.style.display = '';
     receiveTiles.innerHTML = `
       <div class="stat-tile"><div class="k">本数</div><div class="v">${totalStats.receive_attempts}</div></div>
       <div class="stat-tile"><div class="k">Aパス</div><div class="v">${totalStats.receive_a}</div></div>
@@ -1511,8 +1573,7 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
       <div class="stat-tile"><div class="k">A率</div><div class="v">${pct(totalStats.receive_a_rate)}</div></div>
     `;
   } else {
-    receiveLabel.style.display = 'none';
-    receiveTiles.style.display = 'none';
+    receiveAccordion.style.display = 'none';
   }
 
   // プレー映像（動画URLが設定されている試合だけ表示される）。選手を切り替えたら、
@@ -1545,6 +1606,9 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
   } else {
     errBreakdownEl.style.display = 'none';
   }
+
+  // 選手・チームを切り替えるたびに、折り畳みは毎回たたんだ状態からスタートする。
+  resetDetailAccordions();
 }
 
 let selectedPlayerNumbers = new Set();
@@ -1572,6 +1636,7 @@ function renderSingleMatchPlayerView() {
       document.getElementById('detailHardSection').style.display = 'none';
       document.getElementById('detailFeintSection').style.display = 'none';
       document.getElementById('detailRotationSection').style.display = 'none';
+      resetDetailAccordions();
       return;
     }
     const setRows = DATA.sets.map(s => {
@@ -1618,6 +1683,7 @@ function renderCombinedPlayerView(nums) {
         document.getElementById('detailHardSection').style.display = 'none';
         document.getElementById('detailFeintSection').style.display = 'none';
         document.getElementById('detailRotationSection').style.display = 'none';
+        resetDetailAccordions();
         return;
       }
       const rows = entries.map((entry, i) => {
@@ -3197,6 +3263,7 @@ setupDropZoneToggle();
 setupPlayerListToggle();
 setupSidebarToggle();
 setupMatchListToggle();
+setupExpandAllButton();
 
 fetch('matches.json')
   .then(res => res.ok ? res.json() : [])
