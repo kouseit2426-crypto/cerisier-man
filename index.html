@@ -273,7 +273,7 @@
   .summary-modal-actions { margin-top: 14px; text-align: center; }
   .summary-modal-loading { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
 
-  /* スタメン（セット開始時点）のコート図。前衛3人・後衛3人の2段組み、S1（サーブ位置）に赤丸バッジ。 */
+  /* スタメン（セット開始時点）のコート図。前衛3人・後衛3人の2段組み、セッター（背番号7山崎/8青木）の位置に赤丸バッジ。 */
   .court-diagram {
     display: flex; flex-direction: column; gap: 10px;
     border: 1px solid var(--border); border-radius: 12px; padding: 14px;
@@ -481,7 +481,7 @@
     <details class="accordion" id="startingLineupsCard">
       <summary>スタメン（セット開始時点）</summary>
       <div class="accordion-body">
-        <p class="hint" style="margin-top:-6px">S1が基本的にサーブ位置（次に回転して前衛に上がる並び）です。セットを選んでください。</p>
+        <p class="hint" style="margin-top:-6px">赤い印がセッター（山崎または青木）の位置です。セットを選んでください。</p>
         <div class="player-grid" id="startingLineupSetButtons"></div>
         <div id="startingLineupBody" style="margin-top:16px"></div>
       </div>
@@ -2043,25 +2043,28 @@ function scoreChartSvg(points, title, ownLabel, opponentLabel) {
 
 // ==================== セット開始時点のスタメン（S1〜S6） ====================
 // 選手ランキングのすぐ上に、セットを選ぶボタンで切り替えて見せる（1試合を選んでいるときのみ）。
-// コート図（前衛S4/S3/S2・後衛S5/S6/S1）で表示し、S1（サーブ位置）に赤丸バッジを付ける。
+// コート図（前衛S4/S3/S2・後衛S5/S6/S1）で表示し、セッター（背番号7 山崎 または 8 青木）が
+// 入っている位置に赤丸バッジを付ける（S1固定ではなく、そのセットで実際にセッターがいる位置）。
+const SETTER_NUMBERS = [7, 8];
 function startingLineupHtml(lineup) {
   if (!lineup || !lineup.length) return '<p class="hint">このセットのスタメン情報は取得できませんでした（この試合を追加した時点では未対応でした）。</p>';
   const nameAt = (idx) => {
     const number = lineup[idx];
     return ROSTER[number] || `#${number}`;
   };
-  const cell = (posIdx, posLabel, isServe) => {
+  const setterIdx = lineup.findIndex(n => SETTER_NUMBERS.includes(Number(n)));
+  const cell = (posIdx, posLabel) => {
     const name = escapeHtml(nameAt(posIdx));
-    const badge = isServe ? '<span class="court-serve-badge">S</span>' : '';
+    const badge = posIdx === setterIdx ? '<span class="court-serve-badge">セ</span>' : '';
     return `<div class="court-pos">${badge}<div class="court-pos-label">${posLabel}</div>`
       + `<div class="court-pos-name">${name}</div></div>`;
   };
   return '<div class="court-diagram">'
     + '<div class="court-row court-front">'
-    + cell(3, 'S4', false) + cell(2, 'S3', false) + cell(1, 'S2', false)
+    + cell(3, 'S4') + cell(2, 'S3') + cell(1, 'S2')
     + '</div>'
     + '<div class="court-row court-back">'
-    + cell(4, 'S5', false) + cell(5, 'S6', false) + cell(0, 'S1', true)
+    + cell(4, 'S5') + cell(5, 'S6') + cell(0, 'S1')
     + '</div>'
     + '</div>';
 }
