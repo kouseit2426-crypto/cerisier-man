@@ -2055,7 +2055,7 @@ function startingLineupHtml(lineup) {
   const setterIdx = lineup.findIndex(n => SETTER_NUMBERS.includes(Number(n)));
   const cell = (posIdx, posLabel) => {
     const name = escapeHtml(nameAt(posIdx));
-    const badge = posIdx === setterIdx ? '<span class="court-serve-badge">セ</span>' : '';
+    const badge = posIdx === setterIdx ? '<span class="court-serve-badge">S</span>' : '';
     return `<div class="court-pos">${badge}<div class="court-pos-label">${posLabel}</div>`
       + `<div class="court-pos-name">${name}</div></div>`;
   };
