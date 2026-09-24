@@ -90,6 +90,13 @@
     font-size: 12px; font-weight: 700; color: var(--text-muted);
   }
   .match-month-header:first-child { margin-top: 0; }
+  .match-check-row { display: flex; align-items: center; gap: 2px; }
+  .match-check-row .player-check-item { flex: 1; min-width: 0; }
+  .match-summary-icon-btn {
+    flex-shrink: 0; border: none; background: transparent; cursor: pointer;
+    font-size: 15px; padding: 5px 7px; border-radius: 6px; line-height: 1;
+  }
+  .match-summary-icon-btn:hover { background: var(--grid); }
   .month-select-btn {
     font-family: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
     padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
@@ -229,6 +236,65 @@
   .stat-tile .k { font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px; }
   .stat-tile .v { font-size: 20px; font-variant-numeric: tabular-nums; }
 
+  /* ％表示の統一：本数（分子/分母）を添えるときの共通スタイル。
+     pct-count は％と同じ行に小さく（トス配分タイルなど）、
+     pct-count-block は％の下に別行で（選手ランキング表）。 */
+  .pct-count { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+  .pct-count-block { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* 試合サマリー1枚画像モーダル */
+  .summary-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 1000; align-items: flex-start; justify-content: center; padding: 24px 12px;
+    overflow-y: auto;
+  }
+  .summary-modal-overlay.open { display: flex; }
+  .summary-modal {
+    background: var(--surface-1); border-radius: 14px; max-width: 720px; width: 100%;
+    padding: 18px; position: relative;
+  }
+  .summary-modal-close {
+    position: absolute; top: 10px; right: 12px; border: none; background: transparent;
+    font-size: 22px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px;
+  }
+  .summary-modal-close:hover { color: var(--text-primary); }
+  .summary-modal-header { font-size: 16px; font-weight: 700; margin: 0 30px 12px 0; }
+  .summary-modal-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .summary-modal-tab {
+    font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--page-plane); color: var(--text-primary);
+  }
+  .summary-modal-tab.active { background: var(--series-blue); border-color: var(--series-blue); color: #fff; }
+  .summary-modal-body {
+    width: 100%; overflow-x: auto; text-align: center; background: #fff; border-radius: 10px;
+  }
+  .summary-modal-body img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+  .summary-modal-actions { margin-top: 14px; text-align: center; }
+  .summary-modal-loading { padding: 40px 0; color: var(--text-muted); font-size: 13px; }
+
+  /* スタメン（セット開始時点）のコート図。前衛3人・後衛3人の2段組み、S1（サーブ位置）に赤丸バッジ。 */
+  .court-diagram {
+    display: flex; flex-direction: column; gap: 10px;
+    border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+    background: var(--page-plane);
+  }
+  .court-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .court-pos {
+    position: relative; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 8px; text-align: center; min-width: 0;
+  }
+  .court-pos-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+  .court-pos-name {
+    font-size: 14px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .court-serve-badge {
+    position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--series-red, #d64545); color: #fff; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
   th:first-child, td:first-child { text-align: left; font-variant-numeric: normal; }
@@ -307,6 +373,7 @@
   </div>
   <div id="mainArea">
   <h2 id="matchTitle" style="font-size:20px;margin:0 0 16px;color:var(--text-secondary)"></h2>
+  <button type="button" id="matchSummaryBtn" class="dl-btn" style="display:none;margin:-8px 0 16px" onclick="openMatchSummaryModalFromCurrent()">🖼 試合サマリーを1枚で見る</button>
 
   <div class="tab-nav">
     <button class="tab-btn active" id="tabBtn1" onclick="showPage(1)">選手別スタッツ</button>
@@ -414,7 +481,7 @@
     <details class="accordion" id="startingLineupsCard">
       <summary>スタメン（セット開始時点）</summary>
       <div class="accordion-body">
-        <p class="hint" style="margin-top:-6px">P1が基本的にサーブ位置（次に回転して前衛に上がる並び）です。セットを選んでください。</p>
+        <p class="hint" style="margin-top:-6px">S1が基本的にサーブ位置（次に回転して前衛に上がる並び）です。セットを選んでください。</p>
         <div class="player-grid" id="startingLineupSetButtons"></div>
         <div id="startingLineupBody" style="margin-top:16px"></div>
       </div>
@@ -514,12 +581,12 @@
       <div class="accordion-body">
         <p class="hint" style="margin-top:-6px" id="rotationCardHint">
           セット開始時のローテーションをS1とし、自チームが1回転するたびにS2→S3…と数えています。
-          攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。セットを選んでください。
+          攻撃タイプ（レフト／ライト／ミドル／バックアタック）は使用した攻撃コンビの分類によるものです。セットを選んでください。
         </p>
         <div class="player-grid" id="rotationSetButtons"></div>
         <h4 class="section-label" id="tossDistributionLabel" style="font-size:15px">トス配分（％）</h4>
         <p class="hint" style="margin-top:-6px">
-          選んだセット（または全セット合計）の中で、レフト／ライト／ミドル／パイプ／その他それぞれに
+          選んだセット（または全セット合計）の中で、レフト／ライト／ミドル／バックアタック／その他それぞれに
           何％のトスが上がったかです（本数は攻撃コンビの分類による集計本数）。
           「その他」は主にツー（セッターが2本目で自ら打ったプレー）で、まれにコンビの分類が読み取れなかったものも含みます。
         </p>
@@ -541,8 +608,12 @@
 // OWN_TEAM_CODE と ROSTER は、実際のHTMLではチームごとの値に置き換えて埋め込む。
 
 const CATEGORY_ORDER = ['left', 'right', 'middle', 'pipe', 'other'];
-const CATEGORY_LABELS = { left: 'レフト', right: 'ライト', middle: 'ミドル', pipe: 'パイプ', other: 'その他' };
+const CATEGORY_LABELS = { left: 'レフト', right: 'ライト', middle: 'ミドル', pipe: 'バックアタック', other: 'その他' };
 const COMBO_CATEGORY_MAP = { F: 'left', B: 'right', C: 'middle', P: 'pipe' };
+// コンビ表の分類文字だけでは実態と合わないコードを個別に上書きする（女子チーム側の集計精度改善と同じ対応）。
+// P9・L9はバックアタック（パイプ）、P3はハイセットのミドル。PP（ダイレクト/セッターダンプ的な単発プレー）は
+// トス配分・ローテーション別カテゴリ集計からは除外する（dvAnalyzeRotationAttacks側でスキップ）。
+const COMBO_CATEGORY_OVERRIDES = { 'P9': 'pipe', 'L9': 'pipe', 'P3': 'middle' };
 
 const DV_SCORE_RE = /^([*a])p(\d+):(\d+)/;
 const DV_ACTION_RE = /^([*a])(\d\d)([ABSR])([A-Za-z])([#+\-!=/])([A-Z0-9]{2})?/;
@@ -628,7 +699,7 @@ function dvGetComboCategories(content) {
     const fields = line.split(';');
     const code = fields[0];
     const categoryLetter = fields.length > 8 ? fields[8] : '';
-    mapping[code] = COMBO_CATEGORY_MAP[categoryLetter] || 'other';
+    mapping[code] = COMBO_CATEGORY_OVERRIDES[code] || COMBO_CATEGORY_MAP[categoryLetter] || 'other';
   });
   return mapping;
 }
@@ -774,6 +845,7 @@ function dvAnalyzeRotationAttacks(linesInSet, ownMarker, comboCategories) {
     if (!m) return;
     const team = m[1], skill = m[3], evaluation = m[5], combo = m[6];
     if (team !== ownMarker || skill !== 'A') return;
+    if (combo === 'PP') return; // ダイレクト系の単発プレーはトス配分・ローテーション別カテゴリ集計から除外
 
     const entry = rotationStats[rotationNumber];
     entry.attempts += 1;
@@ -1162,6 +1234,7 @@ function dvPlayerSummary(number, s, roster, name) {
     receive_c: s.receive_c, receive_d: s.receive_d, receive_errors: s.receive_errors,
     receive_return_rate: dvRate(s.receive_attempts - s.receive_errors, s.receive_attempts),
     receive_a_rate: dvRate(s.receive_a, s.receive_attempts),
+    receive_ab_rate: dvRate(s.receive_a + s.receive_b, s.receive_attempts),
   };
 }
 
@@ -1368,6 +1441,16 @@ let DATA = null;
 function pct(v) {
   if (v === null || v === undefined) return '-';
   return (v * 100).toFixed(1) + '%';
+}
+
+// ％と本数（分子/分母）をひとつにまとめて表示する共通ヘルパー。
+// pctCount: 同じ行に小さいグレー文字で「【分子/分母本】」を添える（トス配分タイルなど）。
+// pctCountBlock: ％の下に別行で表示する（選手ランキング表）。
+function pctCount(v, num, denom) {
+  return `${pct(v)}<span class="pct-count">【${num}/${denom}本】</span>`;
+}
+function pctCountBlock(v, num, denom) {
+  return `${pct(v)}<div class="pct-count-block">【${num}/${denom}本】</div>`;
 }
 
 function renderTeamGrid() {
@@ -1617,6 +1700,7 @@ function showDetail(name, subLabel, totalStats, setRows, rotationRows) {
       <div class="stat-tile"><div class="k">ミス</div><div class="v">${totalStats.receive_errors}</div></div>
       <div class="stat-tile"><div class="k">返球率</div><div class="v">${pct(totalStats.receive_return_rate)}</div></div>
       <div class="stat-tile"><div class="k">A率</div><div class="v">${pct(totalStats.receive_a_rate)}</div></div>
+      <div class="stat-tile"><div class="k">AB率</div><div class="v">${pct(totalStats.receive_ab_rate)}</div></div>
     `;
   } else {
     receiveAccordion.style.display = 'none';
@@ -1837,6 +1921,7 @@ function comparisonTableHtml(players) {
     html += comparisonRowHtml('ミス', players, p => p.receive_errors, false);
     html += comparisonRowHtml('返球率', players, p => p.receive_return_rate, true);
     html += comparisonRowHtml('A率', players, p => p.receive_a_rate, true);
+    html += comparisonRowHtml('AB率', players, p => p.receive_ab_rate, true);
   }
 
   html += '</tbody></table></div>';
@@ -1862,8 +1947,7 @@ function tossDistributionHtml(rows) {
     const c = grand.categories[cat];
     const share = dvRate(c.attempts, grand.attempts);
     html += `<div class="stat-tile"><div class="k">${CATEGORY_LABELS[cat]}</div>`
-      + `<div class="v">${pct(share)}</div>`
-      + `<div class="hint" style="margin-top:2px">${c.attempts}本</div></div>`;
+      + `<div class="v">${pctCount(share, c.attempts, grand.attempts)}</div></div>`;
   });
   html += '</div>';
   return html;
@@ -1957,19 +2041,29 @@ function scoreChartSvg(points, title, ownLabel, opponentLabel) {
        + `</div></div>`;
 }
 
-// ==================== セット開始時点のスタメン（P1〜P6） ====================
-// 選手ランキングのすぐ上に、セットを選ぶボタンで切り替えて見せる（1試合を選んでいるときのみ）
+// ==================== セット開始時点のスタメン（S1〜S6） ====================
+// 選手ランキングのすぐ上に、セットを選ぶボタンで切り替えて見せる（1試合を選んでいるときのみ）。
+// コート図（前衛S4/S3/S2・後衛S5/S6/S1）で表示し、S1（サーブ位置）に赤丸バッジを付ける。
 function startingLineupHtml(lineup) {
   if (!lineup || !lineup.length) return '<p class="hint">このセットのスタメン情報は取得できませんでした（この試合を追加した時点では未対応でした）。</p>';
-  let html = '<div class="stat-tiles">';
-  lineup.forEach((number, i) => {
-    const name = ROSTER[number] || `#${number}`;
-    html += `<div class="stat-tile"><div class="k">P${i + 1}</div>`
-      + `<div class="v" style="font-size:15px">${escapeHtml(name)}<br>`
-      + `<span style="font-size:12px;font-weight:400">#${number}</span></div></div>`;
-  });
-  html += '</div>';
-  return html;
+  const nameAt = (idx) => {
+    const number = lineup[idx];
+    return ROSTER[number] || `#${number}`;
+  };
+  const cell = (posIdx, posLabel, isServe) => {
+    const name = escapeHtml(nameAt(posIdx));
+    const badge = isServe ? '<span class="court-serve-badge">S</span>' : '';
+    return `<div class="court-pos">${badge}<div class="court-pos-label">${posLabel}</div>`
+      + `<div class="court-pos-name">${name}</div></div>`;
+  };
+  return '<div class="court-diagram">'
+    + '<div class="court-row court-front">'
+    + cell(3, 'S4', false) + cell(2, 'S3', false) + cell(1, 'S2', false)
+    + '</div>'
+    + '<div class="court-row court-back">'
+    + cell(4, 'S5', false) + cell(5, 'S6', false) + cell(0, 'S1', true)
+    + '</div>'
+    + '</div>';
 }
 
 function selectStartingLineupSet(lineup, chipEl) {
@@ -2180,7 +2274,7 @@ function selectRotationSet(rows, chipEl) {
 function showRotationTables() {
   document.getElementById('rotationCardLabel').textContent = 'ローテーション別 攻撃タイプ分布（チーム全体）';
   document.getElementById('rotationCardHint').textContent =
-    'セット開始時のローテーションをS1とし、自チームが1回転するたびにS2→S3…と数えています。攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。セットを選んでください。';
+    'セット開始時のローテーションをS1とし、自チームが1回転するたびにS2→S3…と数えています。攻撃タイプ（レフト／ライト／ミドル／バックアタック）は使用した攻撃コンビの分類によるものです。セットを選んでください。';
   const btnEl = document.getElementById('rotationSetButtons');
   btnEl.innerHTML = '';
   const items = DATA.rotation.bySet.map(s => ({ label: `第${s.setNumber}セット`, rows: s.rows }));
@@ -2204,7 +2298,7 @@ function showRotationTablesCombined(entries, dataList) {
   document.getElementById('rotationCardLabel').textContent =
     `ローテーション別 攻撃タイプ分布（チーム全体・選んだ${entries.length}試合）`;
   document.getElementById('rotationCardHint').textContent =
-    '攻撃タイプ（レフト／ライト／ミドル／パイプ）は使用した攻撃コンビの分類によるものです。試合を選ぶとその試合、「全体」を選ぶと選んだ試合すべての合計になります。';
+    '攻撃タイプ（レフト／ライト／ミドル／バックアタック）は使用した攻撃コンビの分類によるものです。試合を選ぶとその試合、「全体」を選ぶと選んだ試合すべての合計になります。';
   const btnEl = document.getElementById('rotationSetButtons');
   btnEl.innerHTML = '';
   const items = dataList.map(d => ({ label: d.opponent, rows: d.rotation.total.rows }));
@@ -2633,6 +2727,8 @@ function renderMatchChecklist(matches) {
       header.appendChild(selectBtn);
       list.appendChild(header);
     }
+    const row = document.createElement('div');
+    row.className = 'match-check-row';
     const label = document.createElement('label');
     label.className = 'player-check-item';
     const cb = document.createElement('input');
@@ -2643,7 +2739,17 @@ function renderMatchChecklist(matches) {
     span.textContent = `${formatMatchDate(m.matchDate)} 対 ${m.opponent}`;
     label.appendChild(cb);
     label.appendChild(span);
-    list.appendChild(label);
+    // チェックを入れなくても、このアイコンから直接その試合のサマリー画像を開ける
+    // （fetchMatchDataでオンデマンド取得、メイン画面の選択状態とは独立）。
+    const iconBtn = document.createElement('button');
+    iconBtn.type = 'button';
+    iconBtn.className = 'match-summary-icon-btn';
+    iconBtn.textContent = '🖼';
+    iconBtn.title = '試合サマリーを1枚で見る';
+    iconBtn.addEventListener('click', () => openMatchSummaryModal(m));
+    row.appendChild(label);
+    row.appendChild(iconBtn);
+    list.appendChild(row);
   });
   updateMatchListToggleLabel();
 }
@@ -2680,6 +2786,10 @@ function renderMatchSelection() {
   const entries = Array.from(selectedMatchKeys)
     .map(k => MATCHES.find(m => matchKey(m) === k))
     .filter(Boolean);
+
+  // 「試合サマリーを1枚で見る」ボタンは、1試合だけを選んでいるときのみ表示する。
+  currentSingleMatchEntry = entries.length === 1 ? entries[0] : null;
+  updateMatchSummaryButton();
 
   if (entries.length === 0) {
     document.getElementById('mainArea').style.display = 'none';
@@ -2778,21 +2888,24 @@ function playerLeaderboardHtml(players) {
     if (!list.length) return '<p class="hint">規定本数（' + MIN_ATTEMPTS + '本）以上の選手がいません。</p>';
     return '<table class="rotation-table"><thead><tr><th>順位</th><th>選手</th><th>値</th></tr></thead><tbody>'
       + list.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(p.name)}</td>`
-        + `<td>${pct(p[key])}<div class="hint" style="font-size:11px;margin-top:0">${p[numKey]}/${p[denomKey]}</div></td></tr>`).join('')
+        + `<td>${pctCountBlock(p[key], p[numKey], p[denomKey])}</td></tr>`).join('')
       + '</tbody></table>';
   }
   const byKill = topList(players, 'kill_rate', 'attempts');
   const byServe = topList(players, 'serve_efficiency', 'serve_attempts');
   const byReceive = topList(players, 'receive_a_rate', 'receive_attempts');
+  const byReceiveAB = topList(players, 'receive_ab_rate', 'receive_attempts');
   // サーブ効果率は「エース＋効果あり(0.5点分)－ミス」の加重計算なので、％にそのまま
   // 対応する分子はない。ここでは「エース＋効果あり本数」を分子として、
   // 何本中でその％になったかの目安にしている。
   byServe.forEach(p => { p.serve_good_count = (p.serve_aces || 0) + (p.serve_effective || 0); });
+  byReceiveAB.forEach(p => { p.receive_ab = (p.receive_a || 0) + (p.receive_b || 0); });
 
   return '<div class="rank-grid">'
     + `<div><h4>スパイク決定率</h4>${rowsHtml(byKill, 'kill_rate', 'points', 'attempts')}</div>`
     + `<div><h4>サーブ効果率</h4>${rowsHtml(byServe, 'serve_efficiency', 'serve_good_count', 'serve_attempts')}</div>`
     + `<div><h4>レシーブA率</h4>${rowsHtml(byReceive, 'receive_a_rate', 'receive_a', 'receive_attempts')}</div>`
+    + `<div><h4>レシーブAB率</h4>${rowsHtml(byReceiveAB, 'receive_ab_rate', 'receive_ab', 'receive_attempts')}</div>`
     + '</div>';
 }
 
@@ -2868,6 +2981,7 @@ function matchComparisonTableHtml(matches) {
   html += matchComparisonRowHtml('ミス', matches, m => m.team.total.receive_errors, false);
   html += matchComparisonRowHtml('返球率', matches, m => m.team.total.receive_return_rate, true);
   html += matchComparisonRowHtml('A率', matches, m => m.team.total.receive_a_rate, true);
+  html += matchComparisonRowHtml('AB率', matches, m => m.team.total.receive_ab_rate, true);
 
   html += matchComparisonSectionHtml('サイドアウト率・ブレイク率（チーム全体）', colspan);
   html += matchComparisonRowHtml('サーブ本数', matches, m => m.sideOutBreak.total.serve_total, false);
@@ -3032,6 +3146,7 @@ function playerAcrossMatchesTableHtml(number, matches) {
     html += row('ミス', p => p.receive_errors, false);
     html += row('返球率', p => p.receive_return_rate, true);
     html += row('A率', p => p.receive_a_rate, true);
+    html += row('AB率', p => p.receive_ab_rate, true);
   }
 
   html += '</tbody></table></div>';
@@ -3067,6 +3182,7 @@ function combineStatsList(statsList) {
     serve_efficiency: dvRate(sum.serve_aces + sum.serve_effective * 0.5 - sum.serve_errors, sum.serve_attempts),
     receive_return_rate: dvRate(sum.receive_attempts - sum.receive_errors, sum.receive_attempts),
     receive_a_rate: dvRate(sum.receive_a, sum.receive_attempts),
+    receive_ab_rate: dvRate(sum.receive_a + sum.receive_b, sum.receive_attempts),
   };
 }
 
@@ -3235,6 +3351,7 @@ function combinedTableHtml(stats) {
     html += row('ミス', stats.receive_errors, false);
     html += row('返球率', stats.receive_return_rate, true);
     html += row('A率', stats.receive_a_rate, true);
+    html += row('AB率', stats.receive_ab_rate, true);
   }
 
   html += '</tbody></table></div>';
@@ -3305,6 +3422,351 @@ function showMatchComparison(matches) {
 
 document.getElementById('teamTitle').textContent = '東京スリジエ（男子）';
 setupDropZone();
+// ==================== 試合サマリー1枚画像 ====================
+// 対戦相手・日付・セット結果・チームスタッツ6タイル・出場選手全員のスタッツ表を
+// 1枚の画像にまとめて共有できるようにする機能。html2canvas等の外部CDNはこの環境の
+// egress制限で検証できないため使わず、<canvas>に自前で描画する自己完結の実装にした
+// （ネット環境が不安定な体育館でも確実に動く）。描画後はdataURL化して<img>に差し替え、
+// iPhone Safariなどで画像を長押しして保存できるようにしている。
+let currentSingleMatchEntry = null;
+let summaryModalEntry = null;
+let summaryModalData = null;
+let summaryModalSet = null; // null = 全セット、それ以外はセット番号
+let summaryModalDataUrl = null;
+
+const SUMMARY_COLORS = {
+  bg: '#ffffff', card: '#f9f9f7', border: '#e1e0d9', text: '#0b0b0b',
+  textSecondary: '#52514e', textMuted: '#898781', blue: '#2a78d6',
+};
+
+function summaryFontFamily() {
+  return '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+}
+
+function updateMatchSummaryButton() {
+  const btn = document.getElementById('matchSummaryBtn');
+  if (btn) btn.style.display = currentSingleMatchEntry ? 'inline-block' : 'none';
+}
+
+function openMatchSummaryModalFromCurrent() {
+  if (currentSingleMatchEntry) openMatchSummaryModal(currentSingleMatchEntry);
+}
+
+function openMatchSummaryModal(entry) {
+  summaryModalEntry = entry;
+  document.getElementById('summaryModalOverlay').classList.add('open');
+  document.getElementById('summaryModalTitle').textContent = `${entry.opponent}（${formatMatchDate(entry.matchDate)}）`;
+  document.getElementById('summaryModalTabs').innerHTML = '';
+  document.getElementById('summaryModalBody').innerHTML = '<div class="summary-modal-loading">読み込んでいます…</div>';
+  fetchMatchData(entry).then(data => {
+    // 取得を待っている間に閉じたり、別の試合のアイコンを押していたら無視する
+    if (summaryModalEntry !== entry) return;
+    summaryModalData = data;
+    summaryModalSet = null;
+    renderMatchSummaryTabs();
+    renderMatchSummaryImage();
+  });
+}
+
+function closeMatchSummaryModal() {
+  document.getElementById('summaryModalOverlay').classList.remove('open');
+  summaryModalEntry = null;
+  summaryModalData = null;
+  summaryModalDataUrl = null;
+}
+
+function selectSummarySet(setNumber) {
+  summaryModalSet = setNumber;
+  renderMatchSummaryTabs();
+  renderMatchSummaryImage();
+}
+
+function renderMatchSummaryTabs() {
+  const data = summaryModalData;
+  const tabsEl = document.getElementById('summaryModalTabs');
+  tabsEl.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'summary-modal-tab' + (summaryModalSet == null ? ' active' : '');
+  allBtn.textContent = '全セット';
+  allBtn.addEventListener('click', () => selectSummarySet(null));
+  tabsEl.appendChild(allBtn);
+  (data.scoreProgression.bySet || []).forEach(s => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'summary-modal-tab' + (summaryModalSet === s.setNumber ? ' active' : '');
+    btn.textContent = `第${s.setNumber}`;
+    btn.addEventListener('click', () => selectSummarySet(s.setNumber));
+    tabsEl.appendChild(btn);
+  });
+}
+
+function renderMatchSummaryImage() {
+  const body = document.getElementById('summaryModalBody');
+  body.innerHTML = '<div class="summary-modal-loading">画像を作成しています…</div>';
+  const data = summaryModalData;
+  const setNumber = summaryModalSet;
+  // canvas描画がモーダルを開いた直後の表示をブロックしないよう、次のフレームで実行する
+  requestAnimationFrame(() => {
+    if (summaryModalData !== data || summaryModalSet !== setNumber) return;
+    const canvas = drawMatchSummaryCanvas(data, setNumber);
+    const dataUrl = canvas.toDataURL('image/png');
+    summaryModalDataUrl = dataUrl;
+    body.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.alt = '試合サマリー画像';
+    body.appendChild(img);
+  });
+}
+
+function downloadSummaryImage() {
+  if (!summaryModalDataUrl || !summaryModalData) return;
+  const setPart = summaryModalSet == null ? '' : `_第${summaryModalSet}セット`;
+  const filename = `${dvDateSlug(summaryModalData.matchDate)}_${summaryModalData.opponent}_サマリー${setPart}.png`;
+  const a = document.createElement('a');
+  a.href = summaryModalDataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function summaryTeamStatsFor(data, setNumber) {
+  if (setNumber == null) return data.team.total;
+  return (data.team.sets || []).find(s => s.setNumber === setNumber) || data.team.total;
+}
+function summarySideOutFor(data, setNumber) {
+  if (setNumber == null) return data.sideOutBreak.total;
+  return (data.sideOutBreak.bySet || []).find(s => s.setNumber === setNumber) || data.sideOutBreak.total;
+}
+function summaryPlayersFor(data, setNumber) {
+  let list;
+  if (setNumber == null) {
+    list = data.total || [];
+  } else {
+    const setEntry = (data.sets || []).find(s => s.setNumber === setNumber);
+    list = (setEntry && setEntry.players) || [];
+  }
+  return list
+    .filter(p => (p.attempts || 0) + (p.serve_attempts || 0) + (p.receive_attempts || 0) + (p.block_attempts || 0) > 0)
+    .slice()
+    .sort((a, b) => a.number - b.number);
+}
+function summarySetScores(data) {
+  return (data.scoreProgression.bySet || []).map(s => {
+    const last = (s.points && s.points[s.points.length - 1]) || { own: 0, opponent: 0 };
+    return { setNumber: s.setNumber, own: last.own, opponent: last.opponent, ownWon: last.own > last.opponent };
+  });
+}
+
+function summaryRoundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ％＋本数を1行に描く（角括弧部分は小さいグレー文字）。分母0のときは角括弧を省略する
+// （選手ランキング表等で使っているpctCount/pctCountBlockの考え方をcanvas用にしたもの）。
+function drawCellRate(ctx, x, y, rate, num, denom, opts) {
+  opts = opts || {};
+  const mainSize = opts.mainSize || 18;
+  const smallSize = opts.smallSize || 12;
+  const main = pct(rate);
+  const small = denom > 0 ? `【${num}/${denom}本】` : '';
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+  ctx.font = `700 ${mainSize}px ${summaryFontFamily()}`;
+  ctx.fillStyle = opts.color || SUMMARY_COLORS.text;
+  ctx.fillText(main, x, y);
+  if (small) {
+    const mainW = ctx.measureText(main).width;
+    ctx.font = `400 ${smallSize}px ${summaryFontFamily()}`;
+    ctx.fillStyle = opts.smallColor || SUMMARY_COLORS.textMuted;
+    ctx.fillText(small, x + mainW + 5, y);
+  }
+}
+
+function drawMatchSummaryCanvas(data, setNumber) {
+  const scale = 2; // 保存・共有先での見やすさのため、高解像度で描く
+  const W = 900;
+  const padX = 32;
+  const players = summaryPlayersFor(data, setNumber);
+
+  const headerH = 84;
+  const setsH = 60;
+  const cols = 3;
+  const tileGap = 10;
+  const tileHgt = 76;
+  const tilesRows = 2;
+  const tilesH = tilesRows * tileHgt + (tilesRows - 1) * tileGap + 20;
+  const tableHeaderH = 46;
+  const rowH = 28;
+  const tableH = tableHeaderH + rowH * Math.max(players.length, 1) + 16;
+  const footerH = 30;
+  const H = headerH + setsH + tilesH + tableH + footerH;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(W * scale);
+  canvas.height = Math.round(H * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  ctx.fillStyle = SUMMARY_COLORS.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ヘッダー：チーム名・対戦相手・日付・（セット指定時は）セットラベル
+  ctx.textAlign = 'left';
+  ctx.fillStyle = SUMMARY_COLORS.textMuted;
+  ctx.font = `600 13px ${summaryFontFamily()}`;
+  ctx.fillText(data.teamLabel || '', padX, 26);
+  ctx.fillStyle = SUMMARY_COLORS.text;
+  ctx.font = `700 24px ${summaryFontFamily()}`;
+  ctx.fillText(`対 ${data.opponent}`, padX, 58);
+  ctx.fillStyle = SUMMARY_COLORS.textSecondary;
+  ctx.font = `500 14px ${summaryFontFamily()}`;
+  ctx.fillText(formatMatchDate(data.matchDate), padX, 78);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = SUMMARY_COLORS.blue;
+  ctx.font = `700 14px ${summaryFontFamily()}`;
+  ctx.fillText(setNumber == null ? '全セット' : `第${setNumber}セット`, W - padX, 58);
+
+  let y = headerH;
+
+  // セット結果ピル（現在表示中のセットを白枠でハイライト）
+  const sets = summarySetScores(data);
+  if (sets.length) {
+    const pillGap = 10;
+    const pillW = Math.min(96, (W - padX * 2 - pillGap * (sets.length - 1)) / sets.length);
+    let px = padX;
+    sets.forEach(s => {
+      const isActive = setNumber === s.setNumber;
+      ctx.fillStyle = isActive ? SUMMARY_COLORS.blue : SUMMARY_COLORS.card;
+      summaryRoundRectPath(ctx, px, y, pillW, 42, 8);
+      ctx.fill();
+      if (isActive) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        summaryRoundRectPath(ctx, px + 1, y + 1, pillW - 2, 40, 7);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = SUMMARY_COLORS.border;
+        ctx.lineWidth = 1;
+        summaryRoundRectPath(ctx, px, y, pillW, 42, 8);
+        ctx.stroke();
+      }
+      ctx.textAlign = 'center';
+      ctx.fillStyle = isActive ? '#ffffff' : SUMMARY_COLORS.textMuted;
+      ctx.font = `600 11px ${summaryFontFamily()}`;
+      ctx.fillText(`第${s.setNumber}セット`, px + pillW / 2, y + 16);
+      ctx.fillStyle = isActive ? '#ffffff' : (s.ownWon ? SUMMARY_COLORS.blue : SUMMARY_COLORS.textSecondary);
+      ctx.font = `700 16px ${summaryFontFamily()}`;
+      ctx.fillText(`${s.own}-${s.opponent}`, px + pillW / 2, y + 35);
+      px += pillW + pillGap;
+    });
+  }
+  y += setsH;
+
+  // チームスタッツ6タイル
+  const teamStats = summaryTeamStatsFor(data, setNumber);
+  const sideOut = summarySideOutFor(data, setNumber);
+  const tiles = [
+    { label: 'スパイク決定率', rate: teamStats.kill_rate, num: teamStats.points, denom: teamStats.attempts },
+    { label: 'サーブ効果率', rate: teamStats.serve_efficiency, num: (teamStats.serve_aces || 0) + (teamStats.serve_effective || 0), denom: teamStats.serve_attempts },
+    { label: 'レシーブAB率', rate: teamStats.receive_ab_rate, num: (teamStats.receive_a || 0) + (teamStats.receive_b || 0), denom: teamStats.receive_attempts },
+    { label: 'ブロック得点', count: teamStats.block_points },
+    { label: 'サイドアウト率', rate: sideOut.side_out_rate, num: sideOut.receive_wins, denom: sideOut.receive_total },
+    { label: 'ブレイク率', rate: sideOut.break_rate, num: sideOut.serve_wins, denom: sideOut.serve_total },
+  ];
+  const tileW = (W - padX * 2 - tileGap * (cols - 1)) / cols;
+  tiles.forEach((t, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const tx = padX + col * (tileW + tileGap);
+    const ty = y + row * (tileHgt + tileGap);
+    ctx.fillStyle = SUMMARY_COLORS.card;
+    summaryRoundRectPath(ctx, tx, ty, tileW, tileHgt, 8);
+    ctx.fill();
+    ctx.strokeStyle = SUMMARY_COLORS.border;
+    ctx.lineWidth = 1;
+    summaryRoundRectPath(ctx, tx, ty, tileW, tileHgt, 8);
+    ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = SUMMARY_COLORS.textMuted;
+    ctx.font = `500 11.5px ${summaryFontFamily()}`;
+    ctx.fillText(t.label, tx + 12, ty + 22);
+    if (t.count !== undefined) {
+      ctx.fillStyle = SUMMARY_COLORS.text;
+      ctx.font = `700 22px ${summaryFontFamily()}`;
+      ctx.fillText(`${t.count}点`, tx + 12, ty + 52);
+    } else {
+      drawCellRate(ctx, tx + 12, ty + 52, t.rate, t.num, t.denom, { mainSize: 20, smallSize: 11 });
+    }
+  });
+  y += tilesH;
+
+  // 出場選手スタッツ表
+  ctx.textAlign = 'left';
+  ctx.fillStyle = SUMMARY_COLORS.text;
+  ctx.font = `700 14px ${summaryFontFamily()}`;
+  ctx.fillText('選手別スタッツ', padX, y + 4);
+  y += 28;
+
+  const tableW = W - padX * 2;
+  const colDefs = [
+    { label: '選手', w: 0.30 },
+    { label: 'スパイク決定率', w: 0.235 },
+    { label: 'サーブ効果率', w: 0.235 },
+    { label: 'レシーブAB率', w: 0.23 },
+  ];
+  let cx = padX;
+  const colX = colDefs.map(c => { const x0 = cx; cx += tableW * c.w; return x0; });
+
+  ctx.font = `600 11px ${summaryFontFamily()}`;
+  ctx.fillStyle = SUMMARY_COLORS.textMuted;
+  colDefs.forEach((c, i) => ctx.fillText(c.label, colX[i], y));
+  y += 10;
+  ctx.strokeStyle = SUMMARY_COLORS.border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padX, y);
+  ctx.lineTo(W - padX, y);
+  ctx.stroke();
+  y += 22;
+
+  if (!players.length) {
+    ctx.fillStyle = SUMMARY_COLORS.textMuted;
+    ctx.font = `400 12.5px ${summaryFontFamily()}`;
+    ctx.fillText('出場記録がありません。', padX, y);
+    y += rowH;
+  } else {
+    players.forEach((p, idx) => {
+      if (idx % 2 === 1) {
+        ctx.fillStyle = SUMMARY_COLORS.card;
+        ctx.fillRect(padX - 6, y - 17, tableW + 12, rowH);
+      }
+      ctx.textAlign = 'left';
+      ctx.fillStyle = SUMMARY_COLORS.text;
+      ctx.font = `600 13px ${summaryFontFamily()}`;
+      ctx.fillText(`#${p.number} ${p.name}`, colX[0], y);
+      drawCellRate(ctx, colX[1], y, p.kill_rate, p.points, p.attempts, { mainSize: 13, smallSize: 10.5 });
+      drawCellRate(ctx, colX[2], y, p.serve_efficiency, (p.serve_aces || 0) + (p.serve_effective || 0), p.serve_attempts, { mainSize: 13, smallSize: 10.5 });
+      drawCellRate(ctx, colX[3], y, p.receive_ab_rate, (p.receive_a || 0) + (p.receive_b || 0), p.receive_attempts, { mainSize: 13, smallSize: 10.5 });
+      y += rowH;
+    });
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = SUMMARY_COLORS.textMuted;
+  ctx.font = `400 10.5px ${summaryFontFamily()}`;
+  ctx.fillText(`${data.teamLabel || ''} 試合データ分析`, W / 2, H - 12);
+
+  return canvas;
+}
+
 setupDropZoneToggle();
 setupPlayerListToggle();
 setupSidebarToggle();
@@ -3326,5 +3788,18 @@ fetch('matches.json')
     renderMatchSelection();
   });
 </script>
+
+<div class="summary-modal-overlay" id="summaryModalOverlay">
+  <div class="summary-modal">
+    <button type="button" class="summary-modal-close" onclick="closeMatchSummaryModal()" aria-label="閉じる">×</button>
+    <div class="summary-modal-header" id="summaryModalTitle"></div>
+    <div class="summary-modal-tabs" id="summaryModalTabs"></div>
+    <div class="summary-modal-body" id="summaryModalBody"></div>
+    <div class="summary-modal-actions">
+      <button type="button" class="dl-btn" onclick="downloadSummaryImage()">画像として保存</button>
+      <p class="hint" style="margin-top:8px">スマホでは画像を長押しして保存することもできます。</p>
+    </div>
+  </div>
+</div>
 </body>
 </html>
