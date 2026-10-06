@@ -3492,6 +3492,9 @@ function selectSummarySet(setNumber) {
 }
 
 function renderMatchSummaryTabs() {
+  // セットの切り替えは画像の中のピル（全体／第1セット…）を押して行うので、別のタブ行は出さない。
+  document.getElementById('summaryModalTabs').innerHTML = '';
+  return;
   const data = summaryModalData;
   const tabsEl = document.getElementById('summaryModalTabs');
   tabsEl.innerHTML = '';
@@ -3526,6 +3529,19 @@ function renderMatchSummaryImage() {
     const img = document.createElement('img');
     img.src = dataUrl;
     img.alt = '試合サマリー画像';
+    // 画像の中のピル（全体／第Nセット）を押すとセットが切り替わる
+    const pillAt = ev => {
+      const r = img.getBoundingClientRect();
+      const k = canvas.summaryWidth / r.width;
+      const x = (ev.clientX - r.left) * k, yy = (ev.clientY - r.top) * k;
+      return canvas.summaryPills.find(q => x >= q.x && x <= q.x + q.w && yy >= q.y && yy <= q.y + q.h);
+    };
+    img.style.cursor = 'default';
+    img.addEventListener('mousemove', ev => { img.style.cursor = pillAt(ev) ? 'pointer' : 'default'; });
+    img.addEventListener('click', ev => {
+      const q = pillAt(ev);
+      if (q && q.setNumber !== summaryModalSet) selectSummarySet(q.setNumber);
+    });
     body.appendChild(img);
   });
 }
@@ -3653,7 +3669,7 @@ function drawMatchSummaryCanvas(data, setNumber) {
   ctx.font = `500 14px ${F}`;
   ctx.fillText(formatMatchDate(data.matchDate), padX, 87);
   // 右上：表示中のセット（白いピル）
-  const setLabel = setNumber == null ? '全セット' : `第${setNumber}セット`;
+  const setLabel = setNumber == null ? '全体' : `第${setNumber}セット`;
   ctx.font = `700 14px ${F}`;
   const lw = ctx.measureText(setLabel).width + 28;
   ctx.fillStyle = '#ffffff';
@@ -3665,14 +3681,20 @@ function drawMatchSummaryCanvas(data, setNumber) {
 
   let y = headerH + setsTop;
 
-  // セット結果ピル：勝ちセットは緑、負けセットはオレンジのうす色。表示中のセットは青のベタ塗り
+  // セット結果ピル：先頭に「全体」、続けて各セットの「何対何」。ピルを押すとそのセットに切り替わる
+  // （画像の上のクリック位置とピルの位置を突き合わせる。保存するPNGにも同じピルが写る）。
   const sets = summarySetScores(data);
-  if (sets.length) {
+  const pillRects = [];
+  {
     const pillGap = 10;
-    const pillW = Math.min(100, (W - padX * 2 - pillGap * (sets.length - 1)) / sets.length);
+    const count = sets.length + 1;
+    const pillW = Math.min(100, (W - padX * 2 - pillGap * (count - 1)) / count);
+    const setsWon = sets.filter(s => s.ownWon).length;
+    const items = [{ setNumber: null, label: '全体', score: `${setsWon}-${sets.length - setsWon}` }]
+      .concat(sets.map(s => ({ setNumber: s.setNumber, label: `第${s.setNumber}セット`, score: `${s.own}-${s.opponent}`, ownWon: s.ownWon })));
     let px = padX;
-    sets.forEach(s => {
-      const isActive = setNumber === s.setNumber;
+    items.forEach(it => {
+      const isActive = setNumber === it.setNumber;
       ctx.fillStyle = isActive ? C.blue : '#d9e8fa';
       summaryRoundRectPath(ctx, px, y, pillW, pillH, 10);
       ctx.fill();
@@ -3685,13 +3707,16 @@ function drawMatchSummaryCanvas(data, setNumber) {
       ctx.textAlign = 'center';
       ctx.fillStyle = isActive ? 'rgba(255,255,255,0.9)' : C.textMuted;
       ctx.font = `600 11px ${F}`;
-      ctx.fillText(`第${s.setNumber}セット`, px + pillW / 2, y + 17);
-      ctx.fillStyle = isActive ? '#ffffff' : (s.ownWon ? C.blueDark : C.textMuted);
+      ctx.fillText(it.label, px + pillW / 2, y + 17);
+      ctx.fillStyle = isActive ? '#ffffff' : (it.setNumber === null || it.ownWon ? C.blueDark : C.textMuted);
       ctx.font = `700 17px ${F}`;
-      ctx.fillText(`${s.own}-${s.opponent}`, px + pillW / 2, y + 37);
+      ctx.fillText(it.score, px + pillW / 2, y + 37);
+      pillRects.push({ setNumber: it.setNumber, x: px, y: y, w: pillW, h: pillH });
       px += pillW + pillGap;
     });
   }
+  canvas.summaryPills = pillRects;
+  canvas.summaryWidth = W;
   y = headerH + setsH;
 
   // チームスタッツ6タイル（項目ごとに色分け）
@@ -3856,7 +3881,7 @@ fetch('matches.json')
     <div class="summary-modal-body" id="summaryModalBody"></div>
     <div class="summary-modal-actions">
       <button type="button" class="dl-btn" onclick="downloadSummaryImage()">画像として保存</button>
-      <p class="hint" style="margin-top:8px">スマホでは画像を長押しして保存することもできます。</p>
+      <p class="hint" style="margin-top:8px">画像の上のセット結果（何対何）や「全体」を押すと切り替わります。スマホでは画像を長押しして保存することもできます。</p>
     </div>
   </div>
 </div>
