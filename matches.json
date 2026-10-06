@@ -1,5 +1,20 @@
 [
   {
+    "matchDate": "20/09/2026",
+    "opponent": "富士通カワサキレッドスピリッツ",
+    "dataFile": "2026-09-20_富士通カワサキレッドスピリッツ.json"
+  },
+  {
+    "matchDate": "20/09/2026",
+    "opponent": "足利大付属高校",
+    "dataFile": "2026-09-20_足利大付属高校.json"
+  },
+  {
+    "matchDate": "05/09/2026",
+    "opponent": "フォーバルボンズ",
+    "dataFile": "2026-09-05_フォーバルボンズ.json"
+  },
+  {
     "matchDate": "09/08/2026",
     "opponent": "TM東京",
     "dataFile": "2026-08-09_TM東京.json"
