@@ -20,6 +20,11 @@
     "dataFile": "2026-09-20_足利大付属高校.json"
   },
   {
+    "matchDate": "13/09/2026",
+    "opponent": "JUWA",
+    "dataFile": "2026-09-13_JUWA.json"
+  },
+  {
     "matchDate": "05/09/2026",
     "opponent": "フォーバルボンズ",
     "dataFile": "2026-09-05_フォーバルボンズ.json"
@@ -28,6 +33,11 @@
     "matchDate": "05/09/2026",
     "opponent": "東陵東京クラブ",
     "dataFile": "2026-09-05_東陵東京クラブ.json"
+  },
+  {
+    "matchDate": "23/08/2026",
+    "opponent": "埼玉国体",
+    "dataFile": "2026-08-23_埼玉国体.json"
   },
   {
     "matchDate": "09/08/2026",
