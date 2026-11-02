@@ -497,6 +497,72 @@
       <div id="comparisonBody"></div>
     </div>
 
+    <details class="accordion" id="teamOverallCard">
+      <summary id="teamOverallLabel">チーム全体（この試合）</summary>
+      <div class="accordion-body">
+        <p class="hint" style="margin-top:-6px">選手を選ばなくても、チーム全体の成績が見られます。項目ごとに「合計／Nセット目」を切り替えられます。</p>
+
+        <details class="accordion" id="tm_spikeAccordion">
+          <summary>スパイク（全セット合計）</summary>
+          <div class="accordion-body">
+            <div class="section-set-bar" data-section="spike"></div>
+            <div class="stat-tiles" id="tm_detailTiles"></div>
+            <table>
+              <thead>
+                <tr><th id="tm_detailSetHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>被ブロック</th><th>決定率</th><th>効果率</th></tr>
+              </thead>
+              <tbody id="tm_detailSetBody"></tbody>
+            </table>
+
+            <details class="accordion" id="tm_detailHardSection" style="display:none">
+              <summary>強打（全セット合計）</summary>
+              <div class="accordion-body">
+                <div class="section-set-bar" data-section="hard"></div>
+                <p class="hint" style="margin-top:-6px">フルスイングのスパイクの内訳です。</p>
+                <div class="stat-tiles" id="tm_detailHardTiles"></div>
+                <table>
+                  <thead>
+                    <tr><th id="tm_detailHardHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+                  </thead>
+                  <tbody id="tm_detailHardBody"></tbody>
+                </table>
+              </div>
+            </details>
+
+            <details class="accordion" id="tm_detailFeintSection" style="display:none">
+              <summary>フェイント（全セット合計）</summary>
+              <div class="accordion-body">
+                <div class="section-set-bar" data-section="feint"></div>
+                <p class="hint" style="margin-top:-6px">軽く落とすプレーの内訳です。</p>
+                <div class="stat-tiles" id="tm_detailFeintTiles"></div>
+                <table>
+                  <thead>
+                    <tr><th id="tm_detailFeintHeaderLabel">セット</th><th>打数</th><th>得点</th><th>ミス</th><th>決定率</th></tr>
+                  </thead>
+                  <tbody id="tm_detailFeintBody"></tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <details class="accordion" id="tm_blockAccordion">
+          <summary>ブロック（全セット合計）</summary>
+          <div class="accordion-body"><div class="section-set-bar" data-section="block"></div><div class="stat-tiles" id="tm_blockTiles"></div></div>
+        </details>
+
+        <details class="accordion" id="tm_serveAccordion">
+          <summary>サーブ（全セット合計）</summary>
+          <div class="accordion-body"><div class="section-set-bar" data-section="serve"></div><div class="stat-tiles" id="tm_serveTiles"></div></div>
+        </details>
+
+        <details class="accordion" id="tm_receiveAccordion">
+          <summary>レシーブ（全セット合計）</summary>
+          <div class="accordion-body"><div class="section-set-bar" data-section="receive"></div><div class="stat-tiles" id="tm_receiveTiles"></div></div>
+        </details>
+      </div>
+    </details>
+
     <details class="accordion" id="startingLineupsCard">
       <summary>スタメン（セット開始時点）</summary>
       <div class="accordion-body">
@@ -1617,6 +1683,11 @@ const DETAIL_SECTION_EL = {
 };
 const detailSectionScope = { spike: 'all', hard: 'all', feint: 'all', block: 'all', serve: 'all', receive: 'all' };
 let detailCtx = null;
+// 「チーム全体」カード（選手別スタッツタブ）用。選手詳細とは独立して、項目ごとに合計／Nセット目を持つ。
+const teamSectionScope = { spike: 'all', hard: 'all', feint: 'all', block: 'all', serve: 'all', receive: 'all' };
+let teamViewCtx = null;
+let currentTeamEntries = null;   // 複数試合を選んでいるときだけ入る
+let currentTeamDataList = null;
 
 // 選んだセットに出場記録がない時に使う、全部0の成績（率は「-」表示になる）
 function emptyStatsObj(number) {
@@ -1639,20 +1710,21 @@ function setScopeButtonsHtml(maxSets, current, onclickFn) {
   return html;
 }
 
-function selectDetailSectionScope(key, value) {
-  detailSectionScope[key] = value;
-  renderDetailSection(key);
+function selectDetailSectionScope(key, value, pfx) {
+  (pfx ? teamSectionScope : detailSectionScope)[key] = value;
+  renderDetailSection(key, pfx || '');
 }
 
 // 「強打」「フェイント」それぞれについて、スパイクと同じ形式
 // （統計タイル＋セット別／試合別の内訳表）で表示する。rowsは選手・チームの
 // セットごと（単一試合表示時）または試合ごと（複数試合の合算表示時）の集計。
-function renderTechDetailSection(idPrefix, techKey, stats, rows) {
+function renderTechDetailSection(idPrefix, techKey, stats, rows, pfx) {
+  pfx = pfx || '';
   const attempts = stats[`tech_${techKey}_attempts`] || 0;
   const points = stats[`tech_${techKey}_points`] || 0;
   const errors = stats[`tech_${techKey}_errors`] || 0;
   const killRate = attempts > 0 ? points / attempts : null;
-  document.getElementById(`detail${idPrefix}Tiles`).innerHTML = `
+  document.getElementById(`${pfx}detail${idPrefix}Tiles`).innerHTML = `
     <div class="stat-tile"><div class="k">打数</div><div class="v">${attempts}</div></div>
     <div class="stat-tile"><div class="k">得点</div><div class="v">${points}</div></div>
     <div class="stat-tile"><div class="k">ミス</div><div class="v">${errors}</div></div>
@@ -1660,9 +1732,9 @@ function renderTechDetailSection(idPrefix, techKey, stats, rows) {
   `;
 
   const hasMatchLabels = rows.some(sp => sp && sp.matchLabel);
-  document.getElementById(`detail${idPrefix}HeaderLabel`).textContent = hasMatchLabels ? '試合' : 'セット';
+  document.getElementById(`${pfx}detail${idPrefix}HeaderLabel`).textContent = hasMatchLabels ? '試合' : 'セット';
 
-  const body = document.getElementById(`detail${idPrefix}Body`);
+  const body = document.getElementById(`${pfx}detail${idPrefix}Body`);
   body.innerHTML = '';
   rows.forEach(sp => {
     if (sp && sp.attempts > 0) {
@@ -1682,13 +1754,17 @@ function renderTechDetailSection(idPrefix, techKey, stats, rows) {
   }
 }
 
-function renderDetailSection(key) {
-  const ctx = detailCtx;
+function renderDetailSection(key, pfx) {
+  // pfx が 'tm_' のときは「チーム全体」カード側の同名要素を描画する（2026-11-02 女子に合わせて追加）
+  pfx = pfx || '';
+  const $ = id => document.getElementById(pfx + id);
+  const scopeStore = pfx ? teamSectionScope : detailSectionScope;
+  const ctx = pfx ? teamViewCtx : detailCtx;
   if (!ctx) return;
-  const secEl = document.getElementById(DETAIL_SECTION_EL[key]);
+  const secEl = $(DETAIL_SECTION_EL[key]);
   if (!secEl) return;
-  let scope = detailSectionScope[key];
-  if (scope !== 'all' && scope > ctx.maxSets) { scope = 'all'; detailSectionScope[key] = 'all'; }
+  let scope = scopeStore[key];
+  if (scope !== 'all' && scope > ctx.maxSets) { scope = 'all'; scopeStore[key] = 'all'; }
   const total = ctx.allStats;
   const stats = scope === 'all' ? total : (ctx.statsFor(scope) || emptyStatsObj(total.number));
   const rows = scope === 'all' ? ctx.rowsAll : ctx.rowsFor(scope);
@@ -1698,7 +1774,7 @@ function renderDetailSection(key) {
   const bar = secEl.querySelector('.section-set-bar');
   if (bar) {
     bar.innerHTML = ctx.maxSets >= 1
-      ? setScopeButtonsHtml(ctx.maxSets, scope, a => `selectDetailSectionScope('${key}', ${a})`)
+      ? setScopeButtonsHtml(ctx.maxSets, scope, a => `selectDetailSectionScope('${key}', ${a}, '${pfx}')`)
       : '';
   }
   const summaryEl = secEl.querySelector(':scope > summary');
@@ -1708,7 +1784,7 @@ function renderDetailSection(key) {
   }
 
   if (key === 'spike') {
-    document.getElementById('detailTiles').innerHTML = `
+    $('detailTiles').innerHTML = `
       <div class="stat-tile"><div class="k">打数</div><div class="v">${stats.attempts}</div></div>
       <div class="stat-tile"><div class="k">得点</div><div class="v">${stats.points}</div></div>
       <div class="stat-tile"><div class="k">ミス</div><div class="v">${stats.errors}</div></div>
@@ -1716,8 +1792,8 @@ function renderDetailSection(key) {
       <div class="stat-tile"><div class="k">決定率</div><div class="v">${pct(stats.kill_rate)}</div></div>
       <div class="stat-tile"><div class="k">効果率</div><div class="v">${pct(stats.efficiency)}</div></div>
     `;
-    document.getElementById('detailSetHeaderLabel').textContent = hasMatchLabels ? '試合' : 'セット';
-    const setBody = document.getElementById('detailSetBody');
+    $('detailSetHeaderLabel').textContent = hasMatchLabels ? '試合' : 'セット';
+    const setBody = $('detailSetBody');
     setBody.innerHTML = '';
     rows.forEach(sp => {
       if (sp && sp.attempts > 0) {
@@ -1731,12 +1807,12 @@ function renderDetailSection(key) {
       setBody.innerHTML = '<tr><td colspan="7" class="hint">出場記録がありません</td></tr>';
     }
   } else if (key === 'hard') {
-    renderTechDetailSection('Hard', 'hard', stats, rows);
+    renderTechDetailSection('Hard', 'hard', stats, rows, pfx);
   } else if (key === 'feint') {
-    renderTechDetailSection('Feint', 'feint', stats, rows);
+    renderTechDetailSection('Feint', 'feint', stats, rows, pfx);
   } else if (key === 'block') {
     const touch = stats.block_touch_own + stats.block_touch_opp;
-    document.getElementById('blockTiles').innerHTML = `
+    $('blockTiles').innerHTML = `
       <div class="stat-tile"><div class="k">本数</div><div class="v">${stats.block_attempts}</div></div>
       <div class="stat-tile"><div class="k">得点</div><div class="v">${stats.block_points}</div></div>
       <div class="stat-tile"><div class="k">ワンチ</div><div class="v">${touch}</div></div>
@@ -1744,7 +1820,7 @@ function renderDetailSection(key) {
       <div class="stat-tile"><div class="k">失点</div><div class="v">${stats.block_errors}</div></div>
     `;
   } else if (key === 'serve') {
-    document.getElementById('serveTiles').innerHTML = `
+    $('serveTiles').innerHTML = `
       <div class="stat-tile"><div class="k">打数</div><div class="v">${stats.serve_attempts}</div></div>
       <div class="stat-tile"><div class="k">エース</div><div class="v">${stats.serve_aces}</div></div>
       <div class="stat-tile"><div class="k">ミス</div><div class="v">${stats.serve_errors}</div></div>
@@ -1753,7 +1829,7 @@ function renderDetailSection(key) {
       <div class="stat-tile"><div class="k">効果率</div><div class="v">${pct(stats.serve_efficiency)}</div></div>
     `;
   } else if (key === 'receive') {
-    document.getElementById('receiveTiles').innerHTML = `
+    $('receiveTiles').innerHTML = `
       <div class="stat-tile"><div class="k">本数</div><div class="v">${stats.receive_attempts}</div></div>
       <div class="stat-tile"><div class="k">Aパス</div><div class="v">${stats.receive_a}</div></div>
       <div class="stat-tile"><div class="k">Bパス</div><div class="v">${stats.receive_b}</div></div>
@@ -2659,6 +2735,58 @@ function showOpponentCourseSetsCombined(entries, dataList) {
   selectOpponentCourseSet(last.rows, btnEl.children[items.length - 1], last.hasData);
 }
 
+// チーム全体の成績（1試合なら DATA.team、複数試合なら選んだ試合すべての合計）と、
+// セット切り替え用の材料を作る。「チーム全体」カードと、サイドバーの「全体」ボタンの両方が使う。
+function buildTeamView() {
+  const dl = currentTeamDataList, en = currentTeamEntries;
+  const setOf = (d, n) => ((d.team && d.team.sets) || []).find(t => t.setNumber === n) || null;
+  if (dl && en && dl.length >= 2) {
+    const maxSets = Math.max(0, ...dl.map(d => Math.max(0, ...(((d.team && d.team.sets) || []).map(t => t.setNumber)))));
+    const labelOf = e => `${formatMatchDate(e.matchDate)} ${e.opponent}`;
+    const allStats = combineStatsList(dl.map(d => d.team && d.team.total));
+    if (!allStats) return null;
+    return {
+      sub: `チーム合計 ／ 選んだ${en.length}試合の合計`,
+      label: `チーム全体（選んだ${en.length}試合の合計）`,
+      maxSets, allStats,
+      rowsAll: en.map((e, i) => (dl[i].team && dl[i].team.total) ? { ...dl[i].team.total, matchLabel: labelOf(e) } : null),
+      statsFor: n => combineStatsList(dl.map(d => setOf(d, n))),
+      rowsFor: n => en.map((e, i) => { const t = setOf(dl[i], n); return t ? { ...t, matchLabel: labelOf(e) } : null; }),
+    };
+  }
+  if (!DATA || !DATA.team) return null;
+  const teamSets = DATA.team.sets || [];
+  return {
+    sub: 'チーム合計 ／ 全セット合計',
+    label: 'チーム全体（この試合）',
+    maxSets: teamSets.length,
+    allStats: DATA.team.total,
+    rowsAll: DATA.team.sets,
+    statsFor: n => teamSets.find(t => t.setNumber === n) || null,
+    rowsFor: n => teamSets.filter(t => t.setNumber === n),
+  };
+}
+
+// 「選手別スタッツ」タブの「チーム全体」カードを描き直す（試合の選択が変わるたびに呼ぶ）
+function renderTeamOverall() {
+  const v = buildTeamView();
+  const card = document.getElementById('teamOverallCard');
+  if (!v) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  document.getElementById('teamOverallLabel').textContent = v.label;
+  teamViewCtx = { maxSets: v.maxSets, statsFor: v.statsFor, rowsFor: v.rowsFor, allStats: v.allStats, rowsAll: v.rowsAll };
+  const t = v.allStats;
+  const show = (id, on) => { document.getElementById(id).style.display = on ? '' : 'none'; };
+  show('tm_detailHardSection', t.attempts > 0);
+  show('tm_detailFeintSection', t.attempts > 0);
+  show('tm_blockAccordion', t.block_attempts > 0);
+  show('tm_serveAccordion', t.serve_attempts > 0);
+  show('tm_receiveAccordion', t.receive_attempts > 0);
+  ['spike', 'hard', 'feint', 'block', 'serve', 'receive'].forEach(k => renderDetailSection(k, 'tm_'));
+  // 試合を切り替えたときは、項目の折り畳みは閉じた状態からスタート
+  card.querySelectorAll('.accordion').forEach(d => { d.open = false; });
+}
+
 function selectTeam(chipEl) {
   selectedPlayerNumbers.clear();
   document.querySelectorAll('#playerChecklist input[type="checkbox"]').forEach(cb => { cb.checked = false; });
@@ -2666,13 +2794,10 @@ function selectTeam(chipEl) {
   clearDropZoneStatus();
   markSelected(chipEl);
   document.getElementById('comparisonCard').style.display = 'none';
-  const teamSets = DATA.team.sets || [];
-  const teamCtx = {
-    maxSets: teamSets.length,
-    statsFor: n => teamSets.find(t => t.setNumber === n) || null,
-    rowsFor: n => teamSets.filter(t => t.setNumber === n),
-  };
-  showDetail(DATA.team.name, 'チーム合計 ／ 全セット合計', DATA.team.total, DATA.team.sets, null, teamCtx);
+  const v = buildTeamView();
+  if (!v) return;
+  showDetail(DATA.team.name, v.sub, v.allStats, v.rowsAll, null,
+    { maxSets: v.maxSets, statsFor: v.statsFor, rowsFor: v.rowsFor });
   refreshMatchComparisonIfNeeded();
 }
 
@@ -3209,6 +3334,9 @@ function showSingleMatch(data, entries, dataList) {
     showScoreProgressionCharts();
   }
   showPage(1);
+  currentTeamEntries = combined ? entries : null;
+  currentTeamDataList = combined ? dataList : null;
+  renderTeamOverall();
   renderSingleMatchPlayerView();
   if (combined) {
     document.getElementById('startingLineupSetButtons').innerHTML = '';
